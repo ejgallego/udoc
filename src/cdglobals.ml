@@ -15,10 +15,6 @@ let coqlib       = None
 
 (*s Output options *)
 
-type target_language = HTML | JsCoq | Debug
-
-let target_language = ref HTML
-
 type output_t =
   | StdOut
   | MultFiles
@@ -71,39 +67,49 @@ let normalize_filename f =
   let dirname = Filename.dirname f in
   normalize_path dirname, basename
 
-
-
 (** A weaker analog of the function in Envars *)
 
 let udoc_dft_path () =
   normalize_path (Filename.dirname Sys.executable_name)
 
-let header_trailer = ref true
-let header_file = ref ""
-let header_file_spec = ref false
-let footer_file = ref ""
-let footer_file_spec = ref false
-let quiet = ref true
-let light = ref false
-let gallina = ref false
-let short = ref false
-let index = ref true
-let multi_index = ref false
-let index_name = ref "index"
-let toc = ref false
-let title = ref ""
-let externals = ref true
-let coqlib_url  = ref wwwstdlib
+let coqlib_url = ref wwwstdlib
 let udoc_path  = ref (udoc_dft_path ())
-let raw_comments = ref false
-let parse_comments = ref false
-let plain_comments = ref false
-let toc_depth = (ref None : int option ref)
-let lib_name = ref "Library"
-let interpolate = ref false
-let inline_notmono = ref false
 
-(* Parsing options *)
+type uoptions = {
+  (* Title of the document *)
+  title : string;
+
+  (* Index/Toc options *)
+  index       : bool;
+  index_name  : string;
+  multi_index : bool;
+  toc         : bool;
+  toc_depth   : int option;
+
+  (* Header/Footer *)
+  header_trailer   : bool;
+
+  header_file      : string;
+  header_file_spec : bool;
+  footer_file      : string;
+  footer_file_spec : bool;
+}
+
+let opts = ref {
+    title       = "";
+    index       = true;
+    index_name  = "index";
+    multi_index = false;
+    toc         = false;
+    toc_depth   = None;
+
+    header_trailer   = true;
+    header_file      = "";
+    header_file_spec = false;
+    footer_file      = "";
+    footer_file_spec = false;
+}
+
 
 type coq_module = string
 

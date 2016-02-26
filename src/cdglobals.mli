@@ -1,11 +1,11 @@
-(* Global CoqDoc types *)
+(* Glocal uDoc variables *)
 
-val version : string
+val version      : string
 val compile_date : string
 val wwwstdlib    : string
 val wwwcoq       : string
 
-type target_language = HTML | JsCoq | Debug
+(* uDoc Command line options: *)
 
 type output_t = StdOut | MultFiles | File of string
 type glob_source_t = NoGlob | DotGlob | GlobFile of string
@@ -29,29 +29,28 @@ val out_to      : output_t ref
 val output_dir  : string   ref
 val glob_source : glob_source_t ref
 
-val target_language : target_language ref
+type uoptions = {
+  (* Title of the document *)
+  title : string;
 
-(* Title of the document *)
-val title : string ref
+  (* Index/Toc options *)
+  index       : bool;
+  index_name  : string;
+  multi_index : bool;
+  toc         : bool;
+  toc_depth   : int option;
 
-(* Index/Toc options *)
-val index       : bool ref
-val index_name  : string ref
-val multi_index : bool ref
-val toc         : bool ref
-val toc_depth   : int option ref
+  (* Header/Footer *)
+  header_trailer   : bool;
 
-(* Header/Footer *)
-val header_trailer   : bool ref
-val header_file      : string ref
-val header_file_spec : bool ref
-val footer_file      : string ref
-val footer_file_spec : bool ref
+  header_file      : string;
+  header_file_spec : bool;
+  footer_file      : string;
+  footer_file_spec : bool;
+}
+
+val opts : uoptions ref
 
 (* Stdlib url/path *)
-val coqlib_url     : string ref
+val coqlib_url : string ref
 val udoc_path  : string ref
-
-(* This just sets the library name *)
-val lib_name       : string ref
-

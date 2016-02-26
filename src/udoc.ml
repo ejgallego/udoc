@@ -19,6 +19,9 @@
 open Cdglobals
 open Printf
 
+type target_language = HTML | JsCoq | Debug
+let target_language : target_language ref = ref JsCoq
+
 (*s \textbf{Usage.} Printed on error output. *)
 
 let usage () =
@@ -72,7 +75,7 @@ let banner () =
   flush stderr
 
 let target_full_name f =
-  match !Cdglobals.target_language with
+  match !target_language with
     | HTML  -> f ^ ".html"
     | JsCoq -> f ^ ".html"
     | Debug -> f ^ ".txt"
@@ -146,13 +149,20 @@ let parse () =
 
     | ("-nopreamble" | "--nopreamble" | "--no-preamble"
       |  "-bodyonly"   | "--bodyonly"   | "--body-only") :: rem ->
-	header_trailer := false; parse_rec rem
+	opts := { !opts with header_trailer = false } ;
+        parse_rec rem
     | ("-with-header" | "--with-header") :: f ::rem ->
-	header_trailer := true; header_file_spec := true; header_file := f; parse_rec rem
+        opts := { !opts with header_trailer   = true;
+                             header_file_spec = true;
+                             header_file      = f;
+                }; parse_rec rem
     | ("-with-header" | "--with-header") :: [] ->
 	usage ()
     | ("-with-footer" | "--with-footer") :: f ::rem ->
-	header_trailer := true; footer_file_spec := true; footer_file := f; parse_rec rem
+        opts := { !opts with header_trailer   = true;
+                             footer_file_spec = true;
+                             footer_file      = f;
+                }; parse_rec rem
     | ("-with-footer" | "--with-footer") :: [] ->
 	usage ()
     | ("-p" | "--preamble") :: s :: rem ->
@@ -160,15 +170,15 @@ let parse () =
     | ("-p" | "--preamble") :: [] ->
 	usage ()
     | ("-noindex" | "--noindex" | "--no-index") :: rem ->
-	index := false; parse_rec rem
+	opts := { !opts with index = false; }; parse_rec rem
     | ("-multi-index" | "--multi-index") :: rem ->
-	multi_index := true; parse_rec rem
+	opts := { !opts with multi_index = true; }; parse_rec rem
     | ("-index" | "--index") :: s :: rem ->
-	Cdglobals.index_name := s; parse_rec rem
+	opts := { !opts with index_name = s; }; parse_rec rem
     | ("-index" | "--index") :: [] ->
 	usage ()
     | ("-toc" | "--toc" | "--table-of-contents") :: rem ->
-	toc := true; parse_rec rem
+	opts := { !opts with toc = true; }; parse_rec rem
     | ("-stdout" | "--stdout") :: rem ->
 	out_to := StdOut; parse_rec rem
     | ("-o" | "--output") :: f :: rem ->
@@ -180,15 +190,15 @@ let parse () =
     | ("-d" | "--directory") :: [] ->
 	usage ()
     | ("-t" | "-title" | "--title") :: s :: rem ->
-	title := s; parse_rec rem
+	opts := { !opts with title = s; }; parse_rec rem
     | ("-t" | "-title" | "--title") :: [] ->
 	usage ()
     | ("-html" | "--html") :: rem ->
-	Cdglobals.target_language := HTML; parse_rec rem
+	target_language := HTML; parse_rec rem
     | ("--backend=jscoq") :: rem ->
-	Cdglobals.target_language := JsCoq; parse_rec rem
+	target_language := JsCoq; parse_rec rem
     | ("--backend=debug") :: rem ->
-	Cdglobals.target_language := Debug; parse_rec rem
+	target_language := Debug; parse_rec rem
     | ("-toc-depth" | "--toc-depth") :: [] ->
       usage ()
     | ("-toc-depth" | "--toc-depth") :: ds :: rem ->
@@ -197,33 +207,13 @@ let parse () =
                   (eprintf "--toc-depth must be followed by an integer\n";
                    exit 1)
       in
-      Cdglobals.toc_depth := Some d;
-      parse_rec rem
-    | ("-no-lib-name" | "--no-lib-name") :: rem ->
-      Cdglobals.lib_name := "";
-      parse_rec rem
-    | ("-lib-name" | "--lib-name") :: ds :: rem ->
-      Cdglobals.lib_name := ds;
-      parse_rec rem
-    | ("-lib-subtitles" | "--lib-subtitles") :: rem ->
-      eprintf "Warning: the -lib-subtitles option has been removed\n";
-      parse_rec rem
+      opts := { !opts with toc_depth = Some d; }; parse_rec rem
 
     | ("-h" | "-help" | "-?" | "--help") :: rem ->
 	banner (); usage ()
     | ("-V" | "-version" | "--version") :: _ ->
 	banner (); exit 0
 
-    | ("-vernac-file" | "--vernac-file") :: f :: rem ->
-	check_if_file_exists f;
-	add_file (Vernac_file (f, coq_module f)); parse_rec rem
-    | ("-vernac-file" | "--vernac-file") :: [] ->
-	usage ()
-    | ("-tex-file" | "--tex-file") :: f :: rem ->
-      (eprintf "\ncoqdoc: passing a latex file to CoqDoc used to do nothing and is not supported anymore\n";
-       exit 1)
-    | ("-tex-file" | "--tex-file") :: [] ->
-	usage ()
     | "-R" :: path :: log :: rem ->
 	add_path path log; parse_rec rem
     | "-R" :: ([] | [_]) ->
@@ -253,7 +243,6 @@ let parse () =
   in
     parse_rec (List.tl (Array.to_list Sys.argv));
     List.rev !files
-
 
 (* XXX: Uh *)
 let copy src dst =
@@ -286,7 +275,11 @@ let gen_one_file (module OutB : Output.S) (module Cpretty : Cpretty.S)
   let out_module (Vernac_file (f, m)) =
     Cpretty.coq_file f m
   in
-  OutB.start_file out ~toc:!toc ~index:!index ~split_index:!multi_index ~standalone:!header_trailer;
+  OutB.start_file out
+    ~toc:!opts.toc
+    ~index:!opts.index
+    ~split_index:!opts.multi_index
+    ~standalone:!opts.header_trailer;
   List.iter out_module l;
   OutB.end_file ()
 
@@ -298,13 +291,21 @@ let gen_mult_files (module OutB : Output.S) (module Cpretty : Cpretty.S)
     let hf  = target_full_name m                                         in
     with_outfile hf (fun out ->
         (* Disable index and TOC for each file *)
-        OutB.start_file out ~toc:false ~index:false ~split_index:false ~standalone:!header_trailer;
+        OutB.start_file out
+          ~toc:false
+          ~index:false
+          ~split_index:false
+          ~standalone:!opts.header_trailer;
         Cpretty.coq_file f m;
         OutB.end_file ()
       )
   in
     List.iter out_module l;
-    OutB.appendix ~toc:!toc ~index:!index ~split_index:!multi_index ~standalone:!header_trailer
+    OutB.appendix
+      ~toc:!opts.toc
+      ~index:!opts.index
+      ~split_index:!opts.multi_index
+      ~standalone:!opts.header_trailer
 
 let read_glob_file vfile f =
   try Index.read_glob vfile f

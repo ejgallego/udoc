@@ -52,7 +52,7 @@ module Debug : S = struct
 
   let start_module coq_mod =
     cur_mod := coq_mod;
-    printf "#start_module: %s/%s@\n" !lib_name coq_mod
+    printf "#start_module: %s@\n" coq_mod
 
   let indentation n = for _i = 1 to n do printf "␣" done
 

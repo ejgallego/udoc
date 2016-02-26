@@ -27,9 +27,9 @@ module Constants = struct
     with End_of_file -> close_in in_f
 
   let header fmt =
-    pp_file fmt (if !header_file_spec then !header_file else hd_file)
+    pp_file fmt (if !opts.header_file_spec then !opts.header_file else hd_file)
   let footer fmt =
-    pp_file fmt (if !footer_file_spec then !footer_file else ft_file)
+    pp_file fmt (if !opts.footer_file_spec then !opts.footer_file else ft_file)
 
 end
 

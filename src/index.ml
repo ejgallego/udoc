@@ -182,9 +182,7 @@ let sort_entries el =
 let display_letter c = if c = '*' then "other" else String.make 1 c
 
 let type_name = function
-  | Library ->
-      let ln = !lib_name in
-        if ln <> "" then String.lowercase ln else "library"
+  | Library -> "library"
   | Module -> "module"
   | Definition -> "definition"
   | Inductive -> "inductive"
