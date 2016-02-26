@@ -23,16 +23,10 @@ open Printf
 
 let usage () =
   prerr_endline "";
-  prerr_endline "Usage: coqdoc <options and files>";
+  prerr_endline "Usage: udoc <options and files>";
   prerr_endline "  --html               produce a HTML document (default)";
-  prerr_endline "  --latex              produce a LaTeX document";
-  prerr_endline "  --texmacs            produce a TeXmacs document";
-  prerr_endline "  --raw                produce a text document";
   prerr_endline "  --backend=jscoq      produce a jscoq document";
   prerr_endline "  --backend=debug      produce a debug document";
-  prerr_endline "  --dvi                output the DVI";
-  prerr_endline "  --ps                 output the PostScript";
-  prerr_endline "  --pdf                output the Pdf";
   prerr_endline "  --stdout             write output to stdout";
   prerr_endline "  -o <file>            write output in file <file>";
   prerr_endline "  -d <dir>             output files into directory <dir>";
@@ -49,8 +43,6 @@ let usage () =
   prerr_endline "  --toc                output a table of contents";
   prerr_endline "  --vernac <file>      consider <file> as a .v file";
   prerr_endline "  -p <string>          insert <string> in LaTeX preamble";
-  prerr_endline "  --files-from <file>  read file names to process in <file>";
-  prerr_endline "  --glob-from <file>   read globalization information from <file>";
   prerr_endline "  --no-glob            don't use any globalization information (no links will be inserted at identifiers)";
   prerr_endline "  --quiet              quiet mode (default)";
   prerr_endline "  --verbose            verbose mode";
@@ -62,22 +54,13 @@ let usage () =
   prerr_endline "  --coqlib_path <dir>  set the path where Coq files are installed";
   prerr_endline "  -R <dir> <coqdir>    map physical dir to Coq dir";
   prerr_endline "  -Q <dir> <coqdir>    map physical dir to Coq dir";
-  prerr_endline "  --latin1             set ISO-8859-1 mode";
-  prerr_endline "  --utf8               set UTF-8 mode";
-  prerr_endline "  --charset <string>   set HTML charset";
-  prerr_endline "  --inputenc <string>  set LaTeX input encoding";
-  prerr_endline "  --interpolate        try to typeset identifiers in comments using definitions in the same module";
   prerr_endline "  --parse-comments     parse regular comments";
   prerr_endline "  --plain-comments     consider comments as non-literate text";
   prerr_endline "  --toc-depth <int>    don't include TOC entries for sections below level <int>";
   prerr_endline "  --no-lib-name        don't display \"Library\" before library names in the toc";
   prerr_endline "  --lib-name <string>  call top level toc entries <string> instead of \"Library\"";
-  prerr_endline "  --inline-notmono     use a proportional width font for inline code (possibly with a different color)";
   prerr_endline "";
   exit 1
-
-let obsolete s =
-  eprintf "Warning: option %s is now obsolete; please update your scripts\n" s
 
 (*s \textbf{Banner.} Always printed. Notice that it is printed on error
     output, so that when the output of [coqdoc] is redirected this header
@@ -85,7 +68,7 @@ let obsolete s =
     course). *)
 
 let banner () =
-  eprintf "This is coqdoc version %s, compiled on %s\n"
+  eprintf "This is udoc version %s, compiled on %s\n"
     Cdglobals.version Cdglobals.compile_date;
   flush stderr
 
@@ -138,14 +121,7 @@ let coq_module (filename : string) : coq_module =
 
 let what_file f =
   check_if_file_exists f;
-  if Filename.check_suffix f ".v" || Filename.check_suffix f ".g" then
-    Vernac_file (f, coq_module f)
-  (* EG: We still don't entirely remove this snippet to help users *)
-  else if Filename.check_suffix f ".tex" then
-    (eprintf "\ncoqdoc: passing a latex file to CoqDoc used to do nothing and is not supported anymore\n";
-     exit 1)
-  else
-    (eprintf "\ncoqdoc: don't know what to do with %s\n" f; exit 1)
+  Vernac_file (f, coq_module f)
 
 (*s \textbf{Reading file names from a file.}
  *  File names may be given
@@ -154,32 +130,6 @@ let what_file f =
  *  in the file named [f]. These file names must be separated by spaces,
  *  tabulations or newlines.
  *)
-
-let files_from_file f =
-  let files_from_channel ch =
-    let buf = Buffer.create 80 in
-    let l = ref [] in
-      try
-	while true do
-	  match input_char ch with
-	    | ' ' | '\t' | '\n' ->
-		if Buffer.length buf > 0 then l := (Buffer.contents buf) :: !l;
-		Buffer.clear buf
-	    | c ->
-		Buffer.add_char buf c
-	done; []
-      with End_of_file ->
-	List.rev !l
-  in
-    try
-      check_if_file_exists f;
-      let ch = open_in f in
-      let l = files_from_channel ch in
-	close_in ch;l
-    with Sys_error s -> begin
-      eprintf "coqdoc: cannot read from file %s (%s)\n" f s;
-      exit 1
-    end
 
 (*s \textbf{Parsing of the command line.} *)
 
@@ -293,11 +243,6 @@ let parse () =
        exit 1)
     | ("-tex-file" | "--tex-file") :: [] ->
 	usage ()
-    | ("-files" | "--files" | "--files-from") :: f :: rem ->
-	List.iter (fun f -> add_file (what_file f)) (files_from_file f);
-	parse_rec rem
-    | ("-files" | "--files") :: [] ->
-	usage ()
     | "-R" :: path :: log :: rem ->
 	add_path path log; parse_rec rem
     | "-R" :: ([] | [_]) ->
@@ -330,39 +275,6 @@ let parse () =
     parse_rec (List.tl (Array.to_list Sys.argv));
     List.rev !files
 
-
-(*s The following function produces the output. The default output is
-    the \LaTeX\ document: in that case, we just call [Web.produce_document].
-    If option \verb!-dvi!, \verb!-ps! or \verb!-html! is invoked, then
-    we make calls to \verb!latex! or \verb!dvips! or \verb!pdflatex! accordingly. *)
-
-let locally dir f x =
-  let cwd = Sys.getcwd () in
-    try
-      Sys.chdir dir; let y = f x in Sys.chdir cwd; y
-    with e ->
-      Sys.chdir cwd; raise e
-
-let clean_temp_files basefile =
-  let remove f = try Sys.remove f with _ -> () in
-    remove (basefile ^ ".tex");
-    remove (basefile ^ ".log");
-    remove (basefile ^ ".aux");
-    remove (basefile ^ ".toc");
-    remove (basefile ^ ".dvi");
-    remove (basefile ^ ".ps");
-    remove (basefile ^ ".pdf");
-    remove (basefile ^ ".haux");
-    remove (basefile ^ ".html")
-
-let clean_and_exit file res = clean_temp_files file; exit res
-
-let cat file =
-  let c = open_in file in
-    try
-      while true do print_char (input_char c) done
-    with End_of_file ->
-      close_in c
 
 (* XXX: Uh *)
 let copy src dst =
@@ -466,66 +378,7 @@ let produce_document (l : file list) =
     | MultFiles ->
       gen_mult_files (module OutB) (module Cpretty) l
 
-let produce_output fl =
-  if not (!dvi || !ps || !pdf) then
-    produce_document fl
-  else
-    begin
-      let texfile  = Filename.temp_file "coqdoc" ".tex" in
-      let basefile = Filename.chop_suffix texfile ".tex" in
-      let final_out_to = !out_to in
-	out_to := File texfile;
-	output_dir := (Filename.dirname texfile);
-	produce_document fl;
-
-	let latexexe = if !pdf then "pdflatex" else "latex" in
-	let latexcmd =
-	  let file = Filename.basename texfile in
-	  let file =
-	    if !quiet then sprintf "'\\nonstopmode\\input{%s}'" file else file
-	  in
-	    sprintf "%s %s && %s %s 1>&2 %s" latexexe file latexexe file (if !quiet then "> /dev/null" else "")
-	in
-	let res = locally (Filename.dirname texfile) Sys.command latexcmd in
-	  if res <> 0 then begin
-	      eprintf "Couldn't run LaTeX successfully\n";
-	      clean_and_exit basefile res
-	    end;
-
-	  let dvifile = basefile ^ ".dvi" in
-	    if !dvi then
-	      begin
-		match final_out_to with
-		  | MultFiles | StdOut -> cat dvifile
-		  | File f -> copy dvifile f
-	      end;
-	  let pdffile = basefile ^ ".pdf" in
-	    if !pdf then
-            begin
-	        match final_out_to with
-		  | MultFiles | StdOut -> cat pdffile
-		  | File f -> copy pdffile f
-	    end;
-	    if !ps then begin
-	        let psfile = basefile ^ ".ps"
-		in
-		let command =
-		  sprintf "dvips %s -o %s %s" dvifile psfile
-		    (if !quiet then "> /dev/null 2>&1" else "")
-		in
-		let res = Sys.command command in
-		  if res <> 0 then begin
-		      eprintf "Couldn't run dvips successfully\n";
-		      clean_and_exit basefile res
-		    end;
-		  match final_out_to with
-		    | MultFiles | StdOut -> cat psfile
-		    | File f -> copy psfile f
-	      end;
-
-	    clean_temp_files basefile
-    end
-
+let produce_output fl = produce_document fl
 
 (*s \textbf{Main program.} Print the banner, parse the command line,
     read the files and then call [produce_document] from module [Web]. *)

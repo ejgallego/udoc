@@ -198,21 +198,6 @@ val inf_rule :  (int * string) list
 
 end
 
-let inf_rule_dumb start_verbatim stop_verbatim char assumptions (midsp,midln,midnm) conclusions = 
-  start_verbatim false;
-  let dumb_line = 
-       function (sp,ln) -> (String.iter char ((String.make sp ' ') ^ ln);
-                            char '\n')
-  in 
-    (List.iter dumb_line assumptions;
-     dumb_line (midsp, midln ^ (match midnm with 
-                                | Some s -> " " ^ s 
-                                | None -> ""));
-     List.iter dumb_line conclusions);
-  stop_verbatim false
-
-
-
 (*s HTML output *)
 
 module Html : S = struct
