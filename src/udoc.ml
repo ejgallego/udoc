@@ -30,7 +30,6 @@ let usage () =
   prerr_endline "  --stdout             write output to stdout";
   prerr_endline "  -o <file>            write output in file <file>";
   prerr_endline "  -d <dir>             output files into directory <dir>";
-  prerr_endline "  -g                   (gallina) skip proofs";
   prerr_endline "  -s                   (short) no titles for files";
   prerr_endline "  -l                   light mode (only defs and statements)";
   prerr_endline "  -t <string>          give a title to the document";
@@ -180,12 +179,6 @@ let parse () =
 	output_dir := dir; parse_rec rem
     | ("-d" | "--directory") :: [] ->
 	usage ()
-    | ("-s" | "--short") :: rem ->
-	short := true; parse_rec rem
-    | ("-l" | "-light" | "--light") :: rem ->
-	gallina := true; light := true; parse_rec rem
-    | ("-g" | "-gallina" | "--gallina") :: rem ->
-	gallina := true; parse_rec rem
     | ("-t" | "-title" | "--title") :: s :: rem ->
 	title := s; parse_rec rem
     | ("-t" | "-title" | "--title") :: [] ->
@@ -196,14 +189,6 @@ let parse () =
 	Cdglobals.target_language := JsCoq; parse_rec rem
     | ("--backend=debug") :: rem ->
 	Cdglobals.target_language := Debug; parse_rec rem
-    | ("-raw-comments" | "--raw-comments") :: rem ->
-	Cdglobals.raw_comments := true; parse_rec rem
-    | ("-parse-comments" | "--parse-comments") :: rem ->
-	Cdglobals.parse_comments := true; parse_rec rem
-    | ("-plain-comments" | "--plain-comments") :: rem ->
-	Cdglobals.plain_comments := true; parse_rec rem
-    | ("-interpolate" | "--interpolate") :: rem ->
-	Cdglobals.interpolate := true; parse_rec rem
     | ("-toc-depth" | "--toc-depth") :: [] ->
       usage ()
     | ("-toc-depth" | "--toc-depth") :: ds :: rem ->
@@ -223,10 +208,6 @@ let parse () =
     | ("-lib-subtitles" | "--lib-subtitles") :: rem ->
       eprintf "Warning: the -lib-subtitles option has been removed\n";
       parse_rec rem
-    | ("-q" | "-quiet" | "--quiet") :: rem ->
-	quiet := true; parse_rec rem
-    | ("-v" | "-verbose" | "--verbose") :: rem ->
-	quiet := false; parse_rec rem
 
     | ("-h" | "-help" | "-?" | "--help") :: rem ->
 	banner (); usage ()
@@ -257,8 +238,6 @@ let parse () =
 	usage ()
     | ("-no-glob" | "--no-glob") :: rem ->
 	glob_source := NoGlob; parse_rec rem
-    | ("--no-externals" | "-no-externals" | "-noexternals") :: rem ->
-	Cdglobals.externals := false; parse_rec rem
     | ("--external" | "-external") :: u :: logicalpath :: rem ->
 	Index.add_external_library logicalpath u; parse_rec rem
     | ("--coqlib" | "-coqlib") :: u :: rem ->
@@ -295,7 +274,7 @@ let copy src dst =
 let output_factory tl =
   let open Output in
   match tl with
-  | HTML      -> (module Html    : S)
+  | HTML      -> (module Out_html.Html   : S)
   | JsCoq     -> (module Out_jscoq.JsCoq : S)
   | Debug     -> (module Out_debug.Debug : S)
 
@@ -386,5 +365,4 @@ let produce_output fl = produce_document fl
 let _ =
   let files = parse () in
     Index.init_coqlib_library ();
-    if not !quiet then banner ();
     if files <> [] then produce_output files

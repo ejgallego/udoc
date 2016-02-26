@@ -52,17 +52,6 @@ val footer_file_spec : bool ref
 val coqlib_url     : string ref
 val udoc_path  : string ref
 
-(* Output options *)
-val quiet          : bool ref
-val light          : bool ref
-val gallina        : bool ref
-val short          : bool ref
-val externals      : bool ref
-val raw_comments   : bool ref
-val parse_comments : bool ref
-val plain_comments : bool ref
-val interpolate    : bool ref
-
 (* This just sets the library name *)
 val lib_name       : string ref
 

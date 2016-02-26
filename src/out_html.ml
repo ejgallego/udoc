@@ -1,92 +1,9 @@
-(************************************************************************)
-(*  v      *   The Coq Proof Assistant  /  The Coq Development Team     *)
-(* <O___,, *   INRIA - CNRS - LIX - LRI - PPS - Copyright 1999-2016     *)
-(*   \VV/  **************************************************************)
-(*    //   *      This file is distributed under the terms of the       *)
-(*         *       GNU Lesser General Public License Version 2.1        *)
-(************************************************************************)
-
 open Format
 
 open Cdglobals
 open Index
 
-(*s Coq keywords *)
-
-let build_table l =
-  let h = Hashtbl.create 101 in
-  List.iter (fun key ->Hashtbl.add h  key ()) l;
-  function s -> try Hashtbl.find h s; true with Not_found -> false
-
-let is_keyword =
-  build_table
-    [ "About"; "AddPath"; "Axiom"; "Abort"; "Chapter"; "Check"; "Coercion"; "Compute"; "CoFixpoint";
-      "CoInductive"; "Corollary"; "Defined"; "Definition"; "End"; "Eval"; "Example";
-      "Export"; "Fact"; "Fix"; "Fixpoint"; "Function"; "Generalizable"; "Global"; "Grammar";
-      "Guarded"; "Goal"; "Hint"; "Debug"; "On";
-      "Hypothesis"; "Hypotheses";
-      "Resolve"; "Unfold"; "Immediate"; "Extern"; "Constructors"; "Rewrite";
-      "Implicit"; "Import"; "Inductive";
-      "Infix"; "Lemma"; "Let"; "Load"; "Local"; "Ltac";
-      "Module"; "Module Type"; "Declare Module"; "Include";
-      "Mutual"; "Parameter"; "Parameters"; "Print"; "Printing"; "All"; "Proof"; "Proof with"; "Qed";
-      "Record"; "Recursive"; "Remark"; "Require"; "Save"; "Scheme"; "Assumptions"; "Axioms"; "Universes";
-      "Induction"; "for"; "Sort"; "Section"; "Show"; "Structure"; "Syntactic"; "Syntax"; "Tactic"; "Theorem";
-      "Search"; "SearchAbout"; "SearchHead"; "SearchPattern"; "SearchRewrite";
-      "Set"; "Types"; "Undo"; "Unset"; "Variable"; "Variables"; "Context";
-      "Notation"; "Reserved Notation"; "Tactic Notation";
-      "Delimit"; "Bind"; "Open"; "Scope"; "Inline";
-      "Implicit Arguments"; "Add"; "Strict";
-      "Typeclasses"; "Instance"; "Global Instance"; "Class"; "Instantiation";
-      "subgoal"; "subgoals"; "vm_compute";
-      "Opaque"; "Transparent"; "Time";
-      "Extraction"; "Extract";
-      "Variant";
-      (* Program *)
-      "Program Definition"; "Program Example"; "Program Fixpoint"; "Program Lemma";
-      "Obligation"; "Obligations"; "Solve"; "using"; "Next Obligation"; "Next";
-      "Program Instance"; "Equations"; "Equations_nocomp";
-      (*i (* coq terms *) *)
-      "forall"; "match"; "as"; "in"; "return"; "with"; "end"; "let"; "fun";
-      "if"; "then"; "else"; "Prop"; "Set"; "Type"; ":="; "where"; "struct"; "wf"; "measure";
-      "fix"; "cofix";
-      (* Ltac *)
-      "before"; "after"; "constr"; "ltac"; "goal"; "context"; "beta"; "delta"; "iota"; "zeta"; "lazymatch";
-      (* Notations *)
-      "level"; "associativity"; "no"
-       ]
-
-let is_tactic =
-  build_table
-    [ "intro"; "intros"; "apply"; "rewrite"; "refine"; "case"; "clear"; "injection";
-      "elimtype"; "progress"; "setoid_rewrite"; "left"; "right"; "constructor"; 
-      "econstructor"; "decide equality"; "abstract"; "exists"; "cbv"; "simple destruct";
-      "info"; "fourier"; "field"; "specialize"; "evar"; "solve"; "instanciate";
-      "quote"; "eexact"; "autorewrite";
-      "destruct"; "destruction"; "destruct_call"; "dependent"; "elim"; "extensionality";
-      "f_equal"; "generalize"; "generalize_eqs"; "generalize_eqs_vars"; "induction"; "rename"; "move"; "omega";
-      "set"; "assert"; "do"; "repeat";
-      "cut"; "assumption"; "exact"; "split"; "subst"; "try"; "discriminate";
-      "simpl"; "unfold"; "red"; "compute"; "at"; "in"; "by";
-      "reflexivity"; "symmetry"; "transitivity";
-      "replace"; "setoid_replace"; "inversion"; "inversion_clear";
-      "pattern"; "intuition"; "congruence"; "fail"; "fresh";
-      "trivial"; "tauto"; "firstorder"; "ring";
-      "clapply"; "program_simpl"; "program_simplify"; "eapply"; "auto"; "eauto";
-      "change"; "fold"; "hnf"; "lazy"; "simple"; "eexists"; "debug"; "idtac"; "first"; "type of"; "pose";
-      "eval"; "instantiate"; "until" ]
-
-(*s Current Coq module *)
-
-(*s Common to both LaTeX and HTML *)
-
-let item_level = ref 0
-let in_doc = ref false
-
-(*s Customized and predefined pretty-print *)
-
-(*s Table of contents *)
-
+(*s Table of contents operators *)
 type toc_entry =
   | Toc_library of string * string option
   | Toc_section of int * (unit -> unit) * string
@@ -97,110 +14,11 @@ let add_toc_entry e = Queue.add e toc_q
 
 let new_label = let r = ref 0 in fun () -> incr r; "lab" ^ string_of_int !r
 
-module type S = sig
+(* Private variables *)
+let item_level = ref 0
+let in_doc = ref false
 
-(** XXX move to start_file  *)
-val push_in_preamble : string -> unit
-
-(** [support_files] List of support files to be copied along the output. *)
-val support_files    : string list
-
-(** [appendix toc index split_index standalone] Backend-specific
-    function that outputs additional files. *)
-val appendix : toc:bool -> index:bool -> split_index:bool -> standalone:bool -> unit
-
-(** [start_file out toc index standalone] Start a logical output file
-    to channel [out] [toc], [index], and [standalone] control whether
-    the backend will generate a TOC, index, and header/trailers for the file.
-*)
-val start_file : Format.formatter -> toc:bool -> index:bool ->
-                 split_index:bool -> standalone:bool -> unit
-
-(** [end_file] Ends the file *)
-val end_file : unit -> unit
-
-(** [start_module mod] Starts a coq module. *)
-val start_module : coq_module -> unit
-
-(** [start_doc] Moves the backend to "document" mode. *)
-val start_doc : unit -> unit
-val end_doc : unit -> unit
-
-val start_emph : unit -> unit
-val stop_emph : unit -> unit
-
-val start_comment : unit -> unit
-val end_comment : unit -> unit
-
-val start_coq : unit -> unit
-val end_coq : unit -> unit
-
-val start_inline_coq : unit -> unit
-val end_inline_coq : unit -> unit
-
-val start_inline_coq_block : unit -> unit
-val end_inline_coq_block : unit -> unit
-
-val indentation : int -> unit
-val line_break : unit -> unit
-val paragraph : unit -> unit
-val empty_line_of_code : unit -> unit
-
-val section : int -> (unit -> unit) -> unit
-
-val item : int -> unit
-val stop_item : unit -> unit
-val reach_item_level : int -> unit
-
-val rule : unit -> unit
-
-val nbsp : unit -> unit
-val char : char -> unit
-val keyword : string -> loc -> unit
-val ident : string -> loc option -> unit
-val sublexer : char -> loc -> unit
-val sublexer_in_doc : char -> unit
-
-val proofbox : unit -> unit
-
-val latex_char : char -> unit
-val latex_string : string -> unit
-val html_char : char -> unit
-val html_string : string -> unit
-val verbatim_char : bool -> char -> unit
-val hard_verbatim_char : char -> unit
-
-val start_latex_math : unit -> unit
-val stop_latex_math : unit -> unit
-val start_verbatim : bool -> unit
-val stop_verbatim : bool -> unit
-val start_quote : unit -> unit
-val stop_quote : unit -> unit
-
-val url : string -> string option -> unit
-
-(* this outputs an inference rule in one go.  You pass it the list of
-   assumptions, then the middle line info, then the conclusion (which
-   is allowed to span multiple lines).
-
-   In each case, the int is the number of spaces before the start of
-   the line's text and the string is the text of the line with the
-   leading trailing space trimmed.  For the middle rule, you can
-   also optionally provide a name.
-
-   We need the space info so that in modes where we aren't doing
-   something smart we can just format the rule verbatim like the user did
-*)
-val inf_rule :  (int * string) list
-             -> (int * string * (string option))
-             -> (int * string) list
-             -> unit
-
-end
-
-(*s HTML output *)
-
-module Html : S = struct
+module Html : Output.S = struct
 
   (* Private methods and values *)
   let finalizers : (unit -> unit) Queue.t = Queue.create ()
@@ -284,9 +102,9 @@ module Html : S = struct
     | Local ->
 	printf "<a class=\"idref\" href=\"%s.html#%s\">" m (sanitize_name fid);
 	printf "<span class=\"id\" title=\"%s\">%s</span></a>" typ s
-    | External m when !externals ->
-	printf "<a class=\"idref\" href=\"%s.html#%s\">" m (sanitize_name fid);
-	printf "<span class=\"id\" title=\"%s\">%s</span></a>" typ s
+    (* | External m when !externals -> *)
+    (*     printf "<a class=\"idref\" href=\"%s.html#%s\">" m (sanitize_name fid); *)
+    (*     printf "<span class=\"id\" title=\"%s\">%s</span></a>" typ s *)
     | External _ | Unknown ->
 	printf "<span class=\"id\" title=\"%s\">%s</span>" typ s
 
@@ -323,14 +141,12 @@ module Html : S = struct
     let mod_name = coq_mod   in
     let ln       = !lib_name in
     cur_mod      := coq_mod;
-    if not !short then begin
-      let (m,sub) = mod_name, None in
-      add_toc_entry (Toc_library (m,sub));
-      if ln = ""  then
-        printf "<h1 class=\"libtitle\">%s</h1>\n\n" mod_name
-      else
-        printf "<h1 class=\"libtitle\">%s %s</h1>\n\n" ln mod_name
-    end
+    let (m,sub) = mod_name, None in
+    add_toc_entry (Toc_library (m,sub));
+    if ln = ""  then
+      printf "<h1 class=\"libtitle\">%s</h1>\n\n" mod_name
+    else
+      printf "<h1 class=\"libtitle\">%s %s</h1>\n\n" ln mod_name
 
   let hard_verbatim_char = output_char
 
@@ -394,7 +210,7 @@ module Html : S = struct
     printf "<span class=\"id\" title=\"keyword\">%s</span>" (translate s)
 
   let ident s loc =
-    if is_keyword s then begin
+    if Coqsyntax.is_keyword s then begin
       printf "<span class=\"id\" title=\"keyword\">%s</span>" (translate s)
     end else begin
       try
@@ -403,15 +219,12 @@ module Html : S = struct
         | Some loc ->
             reference (translate s) (Index.find !cur_mod loc)
       with Not_found ->
-	if is_tactic s then
+	if Coqsyntax.is_tactic s then
 	  printf "<span class=\"id\" title=\"tactic\">%s</span>" (translate s)
-	else
-	  if !Cdglobals.interpolate && !in_doc (* always a var otherwise *)
-	  then
-	    try reference (translate s) (Index.find_string !cur_mod s)
-	    with _ -> output_string s
-	  else
-	    output_string s
+	else begin
+          try reference (translate s) (Index.find_string !cur_mod s)
+          with _ -> output_string s
+        end
     end
 
   let proofbox () = printf "<font size=-2>&#9744;</font>"
@@ -432,17 +245,16 @@ module Html : S = struct
 
   let stop_item () = reach_item_level 0
 
-  let start_coq () = if not !raw_comments then printf "<div class=\"code\">\n"
+  let start_coq () = printf "<div class=\"code\">\n"
+  let end_coq   () = printf "</div>\n"
 
-  let end_coq () = if not !raw_comments then printf "</div>\n"
-
-  let start_doc () = in_doc := true;
-    if not !raw_comments then
-      printf "\n<div class=\"doc\">\n"
+  let start_doc () =
+    in_doc := true;
+    printf "\n<div class=\"doc\">\n"
 
   let end_doc () = in_doc := false;
     stop_item ();
-    if not !raw_comments then printf "\n</div>\n"
+    printf "\n</div>\n"
 
   let start_emph () = printf "<i>"
 
@@ -659,3 +471,4 @@ module Html : S = struct
     if index       then with_outfile (!index_name^".html") Appendix.make_index;
     if split_index then Appendix.make_multi_index ()
 end
+

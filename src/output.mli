@@ -6,19 +6,7 @@
 (*         *       GNU Lesser General Public License Version 2.1        *)
 (************************************************************************)
 
-open Cdglobals
 open Index
-
-(* This interface should be improved. *)
-type toc_entry =
-  | Toc_library of string * string option
-  | Toc_section of int * (unit -> unit) * string
-
-val add_toc_entry : toc_entry -> unit
-val toc_q : toc_entry Queue.t
-
-val is_keyword : string -> bool
-val is_tactic  : string -> bool
 
 (* Backend printer *)
 module type S = sig
@@ -45,7 +33,7 @@ val start_file : Format.formatter -> toc:bool -> index:bool ->
 val end_file : unit -> unit
 
 (** [start_module mod] Starts a coq module. *)
-val start_module : coq_module -> unit
+val start_module : Cdglobals.coq_module -> unit
 
 (** [start_doc] Moves the backend to "document" mode. *)
 val start_doc : unit -> unit
@@ -126,5 +114,3 @@ val inf_rule :  (int * string) list
              -> unit
 
 end
-
-module Html    : S
