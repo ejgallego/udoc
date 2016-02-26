@@ -6,6 +6,8 @@
 (*         *       GNU Lesser General Public License Version 2.1        *)
 (************************************************************************)
 
+(* Plus at your option, any later version *)
+
 open Cdglobals
 open Output
 open Format
