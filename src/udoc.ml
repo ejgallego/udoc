@@ -92,9 +92,6 @@ let banner () =
 let target_full_name f =
   match !Cdglobals.target_language with
     | HTML  -> f ^ ".html"
-    | TeXmacs
-    | LaTeX -> f ^ ".tex"
-    | Raw   -> f ^ ".txt"
     | JsCoq -> f ^ ".html"
     | Debug -> f ^ ".txt"
 
@@ -243,20 +240,8 @@ let parse () =
 	title := s; parse_rec rem
     | ("-t" | "-title" | "--title") :: [] ->
 	usage ()
-    | ("-latex" | "--latex") :: rem ->
-	Cdglobals.target_language := LaTeX; parse_rec rem
-    | ("-pdf" | "--pdf") :: rem ->
-	Cdglobals.target_language := LaTeX; pdf := true; parse_rec rem
-    | ("-dvi" | "--dvi") :: rem ->
-	Cdglobals.target_language := LaTeX; dvi := true; parse_rec rem
-    | ("-ps" | "--ps") :: rem ->
-	Cdglobals.target_language := LaTeX; ps := true; parse_rec rem
     | ("-html" | "--html") :: rem ->
 	Cdglobals.target_language := HTML; parse_rec rem
-    | ("-texmacs" | "--texmacs") :: rem ->
-	Cdglobals.target_language := TeXmacs; parse_rec rem
-    | ("-raw" | "--raw") :: rem ->
-	Cdglobals.target_language := Raw; parse_rec rem
     | ("--backend=jscoq") :: rem ->
 	Cdglobals.target_language := JsCoq; parse_rec rem
     | ("--backend=debug") :: rem ->
@@ -415,10 +400,7 @@ let copy src dst =
 let output_factory tl =
   let open Output in
   match tl with
-  | LaTeX     -> (module Latex   : S)
   | HTML      -> (module Html    : S)
-  | TeXmacs   -> (module TeXmacs : S)
-  | Raw       -> (module Raw     : S)
   | JsCoq     -> (module Out_jscoq.JsCoq : S)
   | Debug     -> (module Out_debug.Debug : S)
 

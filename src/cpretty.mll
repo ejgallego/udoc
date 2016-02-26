@@ -214,31 +214,10 @@
     Str.regexp
       "[ \t]*\\(\\(%\\([^%]*\\)%\\)\\|\\(\\$[^$]*\\$\\)\\)?[ \t]*\\(#\\(\\(&#\\|[^#]\\)*\\)#\\)?"
 
-  let add_printing_token toks pps =
-    try
-      if Str.string_match token_re toks 0 then
-	let tok = Str.matched_group 1 toks in
-	if Str.string_match printing_token_re pps 0 then
-	  let pp =
-	    (try Some (Str.matched_group 3 pps) with _ ->
-             try Some (Str.matched_group 4 pps) with _ -> None),
-	    (try Some (Str.matched_group 6 pps) with _ -> None)
-	  in
-	  Output.add_printing_token tok pp
-    with _ ->
-      ()
-
+  
   let remove_token_re =
     Str.regexp
       "[ \t]*(\\*\\*[ \t]+remove[ \t]+printing[ \t]+\\([^ \t]+\\)[ \t]*\\*)"
-
-  let remove_printing_token toks =
-    try
-      if Str.string_match remove_token_re toks 0 then
-	let tok = Str.matched_group 1 toks in
-	Output.remove_printing_token tok
-    with _ ->
-      ()
 
   let output_indented_keyword s lexbuf =
     let nbsp,isp = count_spaces s in
@@ -516,7 +495,7 @@ rule coq_bol = parse
   | space* "(**" space+ "printing" space+ printing_token space+
       { let tok = lexeme lexbuf in
 	let s = printing_token_body lexbuf in
-	  add_printing_token tok s;
+	  (* add_printing_token tok s; *)
 	  coq_bol lexbuf }
   | space* "(**" space+ "printing" space+
       { eprintf "warning: bad 'printing' command at character %d\n"
@@ -526,7 +505,7 @@ rule coq_bol = parse
 	coq_bol lexbuf }
   | space* "(**" space+ "remove" space+ "printing" space+
       printing_token space* "*)"
-      { remove_printing_token (lexeme lexbuf);
+      { (* remove_printing_token (lexeme lexbuf); *)
 	coq_bol lexbuf }
   | space* "(**" space+ "remove" space+ "printing" space+
       { eprintf "warning: bad 'remove printing' command at character %d\n"
@@ -932,24 +911,22 @@ and escaped_coq = parse
       { decr brackets;
 	if !brackets > 0 then
 	  (OutB.sublexer_in_doc ']'; escaped_coq lexbuf)
-	else Tokens.flush_sublexer () }
+      }
   | "["
       { incr brackets;
         OutB.sublexer_in_doc '['; escaped_coq lexbuf }
   | "(*"
-      { Tokens.flush_sublexer (); comment_level := 1;
+      { comment_level := 1;
         ignore (comment lexbuf); escaped_coq lexbuf }
   | "*)"
       { (* likely to be a syntax error: we escape *) backtrack lexbuf }
   | eof
-      { Tokens.flush_sublexer () }
+      {   }
   | (identifier '.')* identifier
-      { Tokens.flush_sublexer();
-        OutB.ident (lexeme lexbuf) None;
+      { OutB.ident (lexeme lexbuf) None;
         escaped_coq lexbuf }
   | space_nl*
       { let str = lexeme lexbuf in
-          Tokens.flush_sublexer();
           (if !Cdglobals.inline_notmono then () 
                                         else OutB.end_inline_coq ()); 
           String.iter OutB.char str; 
@@ -1056,10 +1033,9 @@ and body_bol = parse
   | _ { backtrack lexbuf; OutB.indentation 0; body lexbuf }
 
 and body = parse
-  | nl {Tokens.flush_sublexer(); OutB.line_break(); Lexing.new_line lexbuf; body_bol lexbuf}
+  | nl { OutB.line_break(); Lexing.new_line lexbuf; body_bol lexbuf}
   | nl+ space* "]]" space* nl
-      { Tokens.flush_sublexer();
-        if not !formatted then
+      { if not !formatted then
           begin
             let s = lexeme lexbuf in
             let nlsp,s = remove_newline s in
@@ -1067,7 +1043,6 @@ and body = parse
             let loc = lexeme_start lexbuf + nlsp + isp in
             OutB.sublexer ']' loc;
             OutB.sublexer ']' (loc+1);
-            Tokens.flush_sublexer();
             body lexbuf
           end
         else
@@ -1076,13 +1051,11 @@ and body = parse
             true
           end }
   | "]]" space* nl
-      { Tokens.flush_sublexer();
-        if not !formatted then
+      { if not !formatted then
           begin
 	    let loc = lexeme_start lexbuf in
 	    OutB.sublexer ']' loc;
 	    OutB.sublexer ']' (loc+1);
-	    Tokens.flush_sublexer();
 	    OutB.line_break();
             body lexbuf
           end
@@ -1091,12 +1064,12 @@ and body = parse
             OutB.paragraph ();
             true
           end }
-  | eof { Tokens.flush_sublexer(); false }
+  | eof { false }
   | '.' space* nl | '.' space* eof
-	{ Tokens.flush_sublexer(); OutB.char '.'; OutB.line_break();
+	{ OutB.char '.'; OutB.line_break();
 	  if not !formatted then true else body_bol lexbuf }
   | '.' space* nl "]]" space* nl
-	{ Tokens.flush_sublexer(); OutB.char '.';
+	{ OutB.char '.';
         if not !formatted then
           begin
             eprintf "Error: stray ]] at %d\n"  (lexeme_start lexbuf);
@@ -1110,36 +1083,34 @@ and body = parse
           end
       }
   | '.' space+
-        { Tokens.flush_sublexer(); OutB.char '.'; OutB.char ' ';
+        { OutB.char '.'; OutB.char ' ';
 	  if not !formatted then false else body lexbuf }
   | "(**" space_nl
-      { Tokens.flush_sublexer(); OutB.end_coq (); OutB.start_doc ();
+      { OutB.end_coq (); OutB.start_doc ();
 	let eol = doc_bol lexbuf in
 	  OutB.end_doc (); OutB.start_coq ();
 	  if eol then body_bol lexbuf else body lexbuf }
-  | "(*" { Tokens.flush_sublexer(); comment_level := 1;
+  | "(*" { comment_level := 1;
 	   if !Cdglobals.parse_comments then OutB.start_comment ();
 	   let eol = comment lexbuf in
 	     if eol
 	     then begin if not !Cdglobals.parse_comments then OutB.line_break(); body_bol lexbuf end
 	     else body lexbuf }
   | "where" 
-      { Tokens.flush_sublexer();
-        OutB.ident (lexeme lexbuf) None;
+      { OutB.ident (lexeme lexbuf) None;
 	start_notation_string lexbuf }
   | identifier
-      { Tokens.flush_sublexer();
-        OutB.ident (lexeme lexbuf) (Some (lexeme_start lexbuf));
+      { OutB.ident (lexeme lexbuf) (Some (lexeme_start lexbuf));
 	body lexbuf }
   | ".."
-      { Tokens.flush_sublexer(); OutB.char '.'; OutB.char '.';
+      { OutB.char '.'; OutB.char '.';
         body lexbuf }
   | '"'
-      { Tokens.flush_sublexer(); OutB.char '"';
+      { OutB.char '"';
         string lexbuf;
         body lexbuf }
   | space
-      { Tokens.flush_sublexer(); OutB.char (lexeme_char lexbuf 0);
+      { OutB.char (lexeme_char lexbuf 0);
         body lexbuf }
 
   | _ { let c = lexeme_char lexbuf 0 in
@@ -1147,7 +1118,7 @@ and body = parse
         body lexbuf }
 
 and start_notation_string = parse
-  | space { Tokens.flush_sublexer(); OutB.char (lexeme_char lexbuf 0);
+  | space { OutB.char (lexeme_char lexbuf 0);
 	    start_notation_string lexbuf }
   | '"' (* a true notation *)
       { OutB.sublexer '"' (lexeme_start lexbuf);
@@ -1161,7 +1132,7 @@ and notation_string = parse
       { OutB.char '"'; OutB.char '"'; (* Unlikely! *)
         notation_string lexbuf }
   | '"'
-      { Tokens.flush_sublexer(); OutB.char '"' }
+      { OutB.char '"' }
   | _ { let c = lexeme_char lexbuf 0 in
         OutB.sublexer c (lexeme_start lexbuf);
         notation_string lexbuf }

@@ -9,10 +9,6 @@
 open Cdglobals
 open Index
 
-(* Common primitives: should be moved to out_common? *)
-val add_printing_token    : string -> string option * string option -> unit
-val remove_printing_token : string -> unit
-
 (* This interface should be improved. *)
 type toc_entry =
   | Toc_library of string * string option
@@ -131,7 +127,4 @@ val inf_rule :  (int * string) list
 
 end
 
-module Latex   : S
 module Html    : S
-module TeXmacs : S
-module Raw     : S

@@ -5,7 +5,7 @@ val compile_date : string
 val wwwstdlib    : string
 val wwwcoq       : string
 
-type target_language = LaTeX | HTML | TeXmacs | Raw | JsCoq | Debug
+type target_language = HTML | JsCoq | Debug
 
 type output_t = StdOut | MultFiles | File of string
 type glob_source_t = NoGlob | DotGlob | GlobFile of string

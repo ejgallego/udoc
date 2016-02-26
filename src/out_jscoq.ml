@@ -54,8 +54,6 @@ module JsCoq : S = struct
   (* Print the header *)
   let start_file out ~toc ~index ~split_index ~standalone =
     oc := out;
-    Tokens.token_tree := ref Tokens.empty_ttree;
-    Tokens.outfun     := output_sublexer_string;
     printf "@[";
     Constants.header !oc
 
@@ -120,8 +118,11 @@ module JsCoq : S = struct
        | Some n -> n
        | None -> addr)
 
-  let sublexer c loc    = Tokens.output_tagged_symbol_char None c
-  let sublexer_in_doc c = Tokens.output_tagged_symbol_char None c
+  let sublexer c loc    =
+    output_char c
+    (* output_sublexer_string true true None (String.make 1 c) *)
+  let sublexer_in_doc c =
+    output_char c
 
   let keyword s _loc = output_string s
   let ident   s _loc = output_string s

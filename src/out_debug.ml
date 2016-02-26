@@ -44,8 +44,6 @@ module Debug : S = struct
 
   let start_file out ~toc ~index ~split_index ~standalone =
     oc := out;
-    Tokens.token_tree := ref Tokens.empty_ttree;
-    Tokens.outfun     := output_sublexer_string;
     printf "#start_file [toc: %B|idx: %B|splt: %B|std: %B]@\n"
       toc index split_index standalone
 
@@ -95,9 +93,11 @@ module Debug : S = struct
 
   let sublexer c loc =
     let tag = try Some (Index.find !cur_mod loc) with Not_found -> None
-    in Tokens.output_tagged_symbol_char tag c
+    in output_sublexer_string true true tag
+      (String.make 1 c)
 
-  let sublexer_in_doc c = Tokens.output_tagged_symbol_char None c
+  let sublexer_in_doc c = output_sublexer_string true true None
+      (String.make 1 c)
 
   let keyword s loc = printf "<k>%s" s
   let ident   s loc = printf "<i>%s" s

@@ -15,7 +15,7 @@ let coqlib       = None
 
 (*s Output options *)
 
-type target_language = LaTeX | HTML | TeXmacs | Raw | JsCoq | Debug
+type target_language = HTML | JsCoq | Debug
 
 let target_language = ref HTML
 
