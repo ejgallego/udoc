@@ -243,7 +243,7 @@ module Html : S = struct
 	  printf "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\"\n";
 	  printf "\"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">\n";
 	  printf "<html xmlns=\"http://www.w3.org/1999/xhtml\">\n<head>\n";
-	  printf "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=%s\" />\n" !charset;
+	  printf "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" />\n";
 	  printf "<link href=\"coqdoc.css\" rel=\"stylesheet\" type=\"text/css\" />\n";
 	  printf "<title>%s</title>\n</head>\n\n" !page_title;
 	  printf "<body>\n\n<div id=\"page\">\n\n<div id=\"header\">\n</div>\n\n";
@@ -468,8 +468,7 @@ module Html : S = struct
   let end_comment () = printf "*)</span>"
 
   let start_inline_coq () = 
-    if !inline_notmono then printf "<span class=\"inlinecodenm\">"
-                       else printf "<span class=\"inlinecode\">"
+    printf "<span class=\"inlinecode\">"
 
   let end_inline_coq () = printf "</span>"
 

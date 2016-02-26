@@ -160,7 +160,7 @@ let map f i =
 	(fun (c,l) -> (c, List.map (fun (s,x) -> (s,f s x)) l))
 	i.idx_entries }
 
-let compare_entries (s1,_) (s2,_) = Alpha.compare_string s1 s2
+let compare_entries (s1,_) (s2,_) = compare s1 s2
 
 let sort_entries el =
   let t = Hashtbl.create 97 in
@@ -170,14 +170,14 @@ let sort_entries el =
      'O'; 'P'; 'Q'; 'R'; 'S'; 'T'; 'U'; 'V'; 'W'; 'X'; 'Y'; 'Z'; '_'; '*'];
   List.iter
     (fun ((s,_) as e) ->
-      let c = Alpha.norm_char s.[0] in
+      let c = Char.uppercase s.[0] in
       let c,l =
 	try c,Hashtbl.find t c with Not_found -> '*',Hashtbl.find t '*' in
       Hashtbl.replace t c (e :: l))
     el;
   let res = ref [] in
   Hashtbl.iter (fun c l -> res := (c, List.sort compare_entries l) :: !res) t;
-  List.sort (fun (c1,_) (c2,_) -> Alpha.compare_char c1 c2) !res
+  List.sort (fun (c1,_) (c2,_) -> compare c1 c2) !res
 
 let display_letter c = if c = '*' then "other" else String.make 1 c
 

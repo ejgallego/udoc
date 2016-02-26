@@ -103,21 +103,6 @@ let lib_name = ref "Library"
 let interpolate = ref false
 let inline_notmono = ref false
 
-let charset = ref "iso-8859-1"
-let inputenc = ref ""
-let latin1 = ref false
-let utf8 = ref false
-
-let set_latin1 () =
-  charset := "iso-8859-1";
-  inputenc := "latin1";
-  latin1 := true
-
-let set_utf8 () =
-  charset := "utf-8";
-  inputenc := "utf8x";
-  utf8 := true
-
 (* Parsing options *)
 
 type coq_module = string

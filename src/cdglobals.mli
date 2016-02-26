@@ -63,20 +63,6 @@ val parse_comments : bool ref
 val plain_comments : bool ref
 val interpolate    : bool ref
 
-(* TO DEPRECATE *)
-val inline_notmono : bool ref
-
-(* Encoding options *)
-val set_latin1 : unit -> unit
-val set_utf8   : unit -> unit
-
-val charset    : string ref
-val inputenc   : string ref
-val latin1     : bool ref
-val utf8       : bool ref
-
-(* to remove/deprecate *)
-
 (* This just sets the library name *)
 val lib_name       : string ref
 

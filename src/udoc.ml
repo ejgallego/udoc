@@ -246,14 +246,6 @@ let parse () =
 	Cdglobals.target_language := JsCoq; parse_rec rem
     | ("--backend=debug") :: rem ->
 	Cdglobals.target_language := Debug; parse_rec rem
-    | ("-charset" | "--charset") :: s :: rem ->
-	Cdglobals.charset := s; parse_rec rem
-    | ("-charset" | "--charset") :: [] ->
-	usage ()
-    | ("-inputenc" | "--inputenc") :: s :: rem ->
-	Cdglobals.inputenc := s; parse_rec rem
-    | ("-inputenc" | "--inputenc") :: [] ->
-	usage ()
     | ("-raw-comments" | "--raw-comments") :: rem ->
 	Cdglobals.raw_comments := true; parse_rec rem
     | ("-parse-comments" | "--parse-comments") :: rem ->
@@ -281,15 +273,6 @@ let parse () =
     | ("-lib-subtitles" | "--lib-subtitles") :: rem ->
       eprintf "Warning: the -lib-subtitles option has been removed\n";
       parse_rec rem
-    | ("-inline-notmono" | "--inline-notmono") :: rem ->
-      Cdglobals.inline_notmono := true;
-      parse_rec rem
-
-    | ("-latin1" | "--latin1") :: rem ->
-	Cdglobals.set_latin1 (); parse_rec rem
-    | ("-utf8" | "--utf8") :: rem ->
-	Cdglobals.set_utf8 (); parse_rec rem
-
     | ("-q" | "-quiet" | "--quiet") :: rem ->
 	quiet := true; parse_rec rem
     | ("-v" | "-verbose" | "--verbose") :: rem ->

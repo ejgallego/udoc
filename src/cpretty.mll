@@ -927,13 +927,12 @@ and escaped_coq = parse
         escaped_coq lexbuf }
   | space_nl*
       { let str = lexeme lexbuf in
-          (if !Cdglobals.inline_notmono then () 
-                                        else OutB.end_inline_coq ()); 
-          String.iter OutB.char str; 
-          (if !Cdglobals.inline_notmono then () 
-                                        else OutB.start_inline_coq ());
-          escaped_coq lexbuf }
-  | _ 
+          OutB.end_inline_coq ();
+          String.iter OutB.char str;
+          OutB.start_inline_coq ();
+          escaped_coq lexbuf
+      }
+  | _
       { OutB.sublexer_in_doc (lexeme_char lexbuf 0);
         escaped_coq lexbuf }
 
