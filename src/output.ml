@@ -378,7 +378,7 @@ module Html : S = struct
        | None -> addr)
 
   let sublexer c loc =
-    let tag =
+    let _tag =
       try Some (Index.find !cur_mod loc) with Not_found -> None
     in
     output_char (* tag *) c

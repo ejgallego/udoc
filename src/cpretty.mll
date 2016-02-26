@@ -493,8 +493,8 @@ rule coq_bol = parse
 	if eol then coq_bol lexbuf else coq lexbuf }
 
   | space* "(**" space+ "printing" space+ printing_token space+
-      { let tok = lexeme lexbuf in
-	let s = printing_token_body lexbuf in
+      { let _tok = lexeme lexbuf in
+	let _s = printing_token_body lexbuf in
 	  (* add_printing_token tok s; *)
 	  coq_bol lexbuf }
   | space* "(**" space+ "printing" space+

@@ -1,2 +1,2 @@
 "src": include
-true: annot, bin_annot, package(str)
+true: annot, safe_string, bin_annot, package(str)
