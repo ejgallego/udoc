@@ -348,33 +348,6 @@ let prog_kw =
   | "Obligations"
   | "Solve"
 
-let hint_kw =
-  "Extern" | "Rewrite" | "Resolve" | "Immediate" | "Transparent" | "Opaque" | "Unfold" | "Constructors"
-
-let set_kw =
-    "Printing" space+ ("Coercions" | "Universes" | "All")
-  | "Implicit" space+ "Arguments"
-
-
-let gallina_kw_to_hide =
-    "Implicit" space+ "Arguments"
-  | ("Local" space+)? "Ltac"
-  | "Require"
-  | "Import"
-  | "Export"
-  | "Load"
-  | "Hint" space+ hint_kw
-  | "Open"
-  | "Close"
-  | "Delimit"
-  | "Transparent"
-  | "Opaque"
-  | ("Declare" space+ ("Morphism" | "Step") )
-  | ("Set" | "Unset") space+ set_kw
-  | "Declare" space+ ("Left" | "Right") space+ "Step"
-  | "Debug" space+ ("On" | "Off")
-
-
 let section = "*" | "**" | "***" | "****"
 
 let item_space = "    "
@@ -413,13 +386,6 @@ rule coq_bol = parse
   | space* begin_hide
       { skip_hide lexbuf; coq_bol lexbuf }
 
-  (* Hide *)
-  | space* (("Local"|"Global") space+)? gallina_kw_to_hide
-      { let s = lexeme lexbuf in
-        output_indented_keyword s lexbuf;
-        let eol = body lexbuf in
-         if eol then coq_bol lexbuf else coq lexbuf
-      }
   | space* thm_token
       { let s = lexeme lexbuf in
         output_indented_keyword s lexbuf;
@@ -534,12 +500,6 @@ and coq = parse
         end }
   | eof
       { () }
-  | (("Local"|"Global") space+)? gallina_kw_to_hide
-      { let s = lexeme lexbuf in
-        OutB.ident s None;
-        let eol = body lexbuf in
-        if eol then coq_bol lexbuf else coq lexbuf
-      }
   | prf_token
       { let eol =
             begin backtrack lexbuf; body lexbuf end
