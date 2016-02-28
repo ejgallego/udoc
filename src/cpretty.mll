@@ -381,16 +381,11 @@ let item_space = "    "
 
 let begin_hide = "(*" space* "begin" space+ "hide" space* "*)" space* nl
 let end_hide = "(*" space* "end" space+ "hide" space* "*)" space* nl
-let begin_show = "(*" space* "begin" space+ "show" space* "*)" space* nl
-let end_show = "(*" space* "end" space+ "show" space* "*)" space* nl
-(*
-let begin_verb = "(*" space* "begin" space+ "verb" space* "*)"
-let end_verb = "(*" space* "end" space+ "verb" space* "*)"
-*)
 
 (*s Scanning Coq, at beginning of line *)
 
 rule coq_bol = parse
+
   (* Rule for lines *)
   | space* nl+
       { if !in_proof = None
@@ -414,12 +409,11 @@ rule coq_bol = parse
         *)
         if eol then coq_bol lexbuf else coq lexbuf }
 
+  (* Hide *)
   | space* begin_hide
       { skip_hide lexbuf; coq_bol lexbuf }
-  | space* begin_show
-      { coq_bol lexbuf }
-  | space* end_show
-      { coq_bol lexbuf }
+
+  (* Hide *)
   | space* (("Local"|"Global") space+)? gallina_kw_to_hide
       { let s = lexeme lexbuf in
         output_indented_keyword s lexbuf;
