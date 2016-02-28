@@ -9,7 +9,7 @@
 (*s Utility functions for the scanners *)
 
 {
-  open Printf
+  open Format
   open Lexing
 
   module type S = sig
@@ -22,7 +22,6 @@
 
   (* Output Back End *)
   module Make (Out : Output.S) = struct
-
   module OutB = Out
 
   (* A list function we need *)
@@ -82,12 +81,12 @@
   let comment_level = ref 0
   let in_proof = ref None
 
-  let in_env start stop = 
+  let in_env start stop =
     let r = ref false in
     let start_env () = r := true; start () in
     let stop_env () = if !r then stop (); r := false in
       (fun x -> !r), start_env, stop_env
-      
+
   let in_emph, start_emph, stop_emph = in_env OutB.start_emph OutB.stop_emph
   let in_quote, start_quote, stop_quote = in_env OutB.start_quote OutB.stop_quote
 
@@ -188,7 +187,6 @@
     Str.regexp
       "[ \t]*\\(\\(%\\([^%]*\\)%\\)\\|\\(\\$[^$]*\\$\\)\\)?[ \t]*\\(#\\(\\(&#\\|[^#]\\)*\\)#\\)?"
 
-  
   let remove_token_re =
     Str.regexp
       "[ \t]*(\\*\\*[ \t]+remove[ \t]+printing[ \t]+\\([^ \t]+\\)[ \t]*\\*)"
@@ -350,13 +348,13 @@ let prog_kw =
   | "Obligations"
   | "Solve"
 
-let hint_kw = 
+let hint_kw =
   "Extern" | "Rewrite" | "Resolve" | "Immediate" | "Transparent" | "Opaque" | "Unfold" | "Constructors"
 
 let set_kw =
     "Printing" space+ ("Coercions" | "Universes" | "All")
   | "Implicit" space+ "Arguments"
-  
+
 
 let gallina_kw_to_hide =
     "Implicit" space+ "Arguments"
@@ -413,15 +411,10 @@ rule coq_bol = parse
       { coq_bol lexbuf }
   | space* (("Local"|"Global") space+)? gallina_kw_to_hide
       { let s = lexeme lexbuf in
-	  if section_or_end s then
-	    let eol = skip_to_dot lexbuf in
-	      if eol then (coq_bol lexbuf) else coq lexbuf
-	  else
-	    begin
-	      output_indented_keyword s lexbuf;
-	      let eol = body lexbuf in
-	      if eol then coq_bol lexbuf else coq lexbuf
-	    end }
+	output_indented_keyword s lexbuf;
+        let eol = body lexbuf in
+         if eol then coq_bol lexbuf else coq lexbuf
+      }
   | space* thm_token
       { let s = lexeme lexbuf in
         output_indented_keyword s lexbuf;
@@ -501,7 +494,6 @@ rule coq_bol = parse
 	  if eol then coq_bol lexbuf else coq lexbuf }
 
 (*s Scanning Coq elsewhere *)
-
 and coq = parse
   | nl
       { if not (!in_proof <> None) then OutB.line_break(); coq_bol lexbuf }
@@ -539,21 +531,19 @@ and coq = parse
       { () }
   | (("Local"|"Global") space+)? gallina_kw_to_hide
       { let s = lexeme lexbuf in
-	    begin
-	      OutB.ident s None;
-	      let eol=body lexbuf in
-		if eol then coq_bol lexbuf else coq lexbuf
-	    end }
+	OutB.ident s None;
+        let eol = body lexbuf in
+	if eol then coq_bol lexbuf else coq lexbuf
+      }
   | prf_token
       { let eol =
 	    begin backtrack lexbuf; body lexbuf end
 	in if eol then coq_bol lexbuf else coq lexbuf }
   | end_kw {
-      let eol =
-	  begin backtrack lexbuf; body lexbuf end
+      let eol = begin backtrack lexbuf; body lexbuf end
       in
-	in_proof := None;
-	if eol then coq_bol lexbuf else coq lexbuf }
+      in_proof := None;
+      if eol then coq_bol lexbuf else coq lexbuf }
   | gallina_kw
       { let s = lexeme lexbuf in
 	  OutB.ident s None;
@@ -589,7 +579,7 @@ and doc_bol = parse
       { let buf' = lexeme lexbuf in
         let bufs = Str.split_delim (Str.regexp "['\n']") buf' in
         let lines = (List.length bufs) - 1 in
-        let line = 
+        let line =
           match bufs with
           | [] -> eprintf "Internal error bad_split1 - please report\n";
                   exit 1
@@ -675,7 +665,7 @@ and doc_list_bol indents = parse
                 backtrack_past_newline lexbuf;
                 doc_list_bol indents lexbuf
               end
-        | Before -> 
+        | Before ->
         (* Here we were at the beginning of a line, and it was blank.
            The next line started before any list items.  So: insert
            a paragraph for the empty line, rewind to whatever's just
@@ -745,9 +735,9 @@ and doc indents = parse
         | None -> ());
        (* this says - if there is a blank line between the two comments,
           insert one in the output too *)
-       let lines = List.length (Str.split_delim (Str.regexp "['\n']") 
+       let lines = List.length (Str.split_delim (Str.regexp "['\n']")
                                                 (lexeme lexbuf))
-       in 
+       in
          if lines > 2 then OutB.paragraph ();
        doc_bol lexbuf
       }
@@ -783,7 +773,7 @@ and doc indents = parse
       { OutB.start_verbatim true; verbatim true lexbuf; doc_bol lexbuf }
   | '"'
       { if in_quote ()
-	then stop_quote () 
+	then stop_quote ()
 	else start_quote ();
         doc indents lexbuf }
   | eof
@@ -1083,7 +1073,7 @@ and inf_rules indents = parse
       { match indents with
         | Some ls -> doc_list_bol ls lexbuf
         | None -> doc_bol lexbuf }
-  | _ 
+  | _
       { backtrack lexbuf;  (* anything else must be the first line in a rule *)
         inf_rules_assumptions indents [] lexbuf}
 
@@ -1095,26 +1085,26 @@ and inf_rules_assumptions indents assumptions = parse
   | space* "---" '-'* [^ '\n']* nl (* hit the horizontal line *)
       { let line = lexeme lexbuf in
         let (spaces,_) = count_spaces line in
-        let dashes_and_name = 
+        let dashes_and_name =
                cut_head_tail_spaces (String.sub line 0 (String.length line - 1))
         in
         let ldn = String.length dashes_and_name in
-        let (dashes,name) = 
+        let (dashes,name) =
           try (let i = String.index dashes_and_name ' ' in
                let d = String.sub dashes_and_name 0 i in
-               let n = cut_head_tail_spaces 
+               let n = cut_head_tail_spaces
                         (String.sub dashes_and_name (i+1) (ldn-i-1))
                in
                  (d, Some n))
           with _ -> (dashes_and_name, None)
 
         in
-          inf_rules_conclusion indents (List.rev assumptions) 
+          inf_rules_conclusion indents (List.rev assumptions)
                                (spaces, dashes, name) [] lexbuf }
   | [^ '\n']* nl (* if it's not the horizontal line, it's an assumption *)
       { let line = lexeme lexbuf in
         let (spaces,_) = count_spaces line in
-        let assumption = cut_head_tail_spaces 
+        let assumption = cut_head_tail_spaces
                             (String.sub line 0 (String.length line - 1))
         in
           inf_rules_assumptions indents ((spaces,assumption)::assumptions)
@@ -1132,10 +1122,10 @@ and inf_rules_conclusion indents assumptions middle conclusions = parse
   | space* [^ '\n']+ nl (* this is a line in the conclusion *)
       { let line = lexeme lexbuf in
         let (spaces,_) = count_spaces line in
-        let conc = cut_head_tail_spaces (String.sub line 0 
+        let conc = cut_head_tail_spaces (String.sub line 0
                                                     (String.length line - 1))
         in
-          inf_rules_conclusion indents assumptions middle 
+          inf_rules_conclusion indents assumptions middle
                                ((spaces,conc) :: conclusions) lexbuf
       }
 
