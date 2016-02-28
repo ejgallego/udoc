@@ -423,28 +423,7 @@ rule coq_bol = parse
         if eol then coq_bol lexbuf else coq lexbuf
       }
 
-  (*  *)
-  | space* "(**" space+ "printing" space+ printing_token space+
-      { let _tok = lexeme lexbuf in
-        let _s = printing_token_body lexbuf in
-          (* add_printing_token tok s; *)
-          coq_bol lexbuf }
-  | space* "(**" space+ "printing" space+
-      { eprintf "warning: bad 'printing' command at character %d\n"
-          (lexeme_start lexbuf); flush stderr;
-        comment_level := 1;
-        ignore (comment lexbuf);
-        coq_bol lexbuf }
-  | space* "(**" space+ "remove" space+ "printing" space+
-      printing_token space* "*)"
-      { (* remove_printing_token (lexeme lexbuf); *)
-        coq_bol lexbuf }
-  | space* "(**" space+ "remove" space+ "printing" space+
-      { eprintf "warning: bad 'remove printing' command at character %d\n"
-          (lexeme_start lexbuf); flush stderr;
-        comment_level := 1;
-        ignore (comment lexbuf);
-        coq_bol lexbuf }
+  (* ?? *)
   | space* "(*"
       { comment_level := 1;
         begin
@@ -457,6 +436,7 @@ rule coq_bol = parse
           if eol then coq_bol lexbuf else coq lexbuf }
   | eof
       { () }
+
   | _
       { let eol =
             begin backtrack lexbuf; body_bol lexbuf end
@@ -971,16 +951,6 @@ and string = parse
 and skip_hide = parse
   | eof | end_hide { () }
   | _ { skip_hide lexbuf }
-
-(*s Reading token pretty-print *)
-
-and printing_token_body = parse
-  | "*)" nl? | eof
-        { let s = Buffer.contents token_buffer in
-          Buffer.clear token_buffer;
-          s }
-  | _   { Buffer.add_string token_buffer (lexeme lexbuf);
-          printing_token_body lexbuf }
 
 (*s These handle inference rules, parsing the body segments of things
     enclosed in [[[  ]]] brackets *)
