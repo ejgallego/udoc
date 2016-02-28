@@ -179,18 +179,6 @@
           Neither
   (* tokens pretty-print *)
 
-  let token_buffer = Buffer.create 1024
-
-  let token_re =
-    Str.regexp "[ \t]*(\\*\\*[ \t]+printing[ \t]+\\([^ \t]+\\)"
-  let printing_token_re =
-    Str.regexp
-      "[ \t]*\\(\\(%\\([^%]*\\)%\\)\\|\\(\\$[^$]*\\$\\)\\)?[ \t]*\\(#\\(\\(&#\\|[^#]\\)*\\)#\\)?"
-
-  let remove_token_re =
-    Str.regexp
-      "[ \t]*(\\*\\*[ \t]+remove[ \t]+printing[ \t]+\\([^ \t]+\\)[ \t]*\\*)"
-
   let output_indented_keyword s lexbuf =
     let nbsp,isp = count_spaces s in
     OutB.indentation nbsp;
@@ -201,9 +189,9 @@
 
 (*s Regular expressions *)
 
-let space = [' ' '\t']
+let space    = [' ' '\t']
 let space_nl = [' ' '\t' '\n' '\r']
-let nl = "\r\n" | '\n'
+let nl       = "\r\n" | '\n'
 
 let firstchar =
   ['A'-'Z' 'a'-'z' '_'] |
@@ -564,8 +552,6 @@ and doc_list_bol indents = parse
         OutB.end_inline_coq_block ();
         formatted := false;
         doc_list_bol indents lexbuf }
-  | "[[[" nl
-      { inf_rules (Some indents) lexbuf }
   | space* nl space* '-'
       { (* Like in the doc_bol production, these two productions
            exist only to deal properly with whitespace *)
@@ -648,14 +634,15 @@ and doc indents = parse
                   | Some ls -> doc_list_bol ls lexbuf
                   | None -> doc_bol lexbuf
                 else doc indents lexbuf)}
-  | "[[[" nl
-      { inf_rules indents lexbuf }
   | "[]"
       { OutB.proofbox (); doc indents lexbuf }
   | "{{" { url lexbuf; doc indents lexbuf }
   | "["
-      { (brackets := 1;  OutB.start_inline_coq (); escaped_coq lexbuf;
-              OutB.end_inline_coq ()); doc indents lexbuf }
+      { (brackets := 1;
+         OutB.start_inline_coq ();
+         escaped_coq lexbuf;
+         OutB.end_inline_coq ());
+        doc indents lexbuf }
   | "(*"
       { backtrack lexbuf ;
         let bol_parse = match indents with
@@ -777,18 +764,22 @@ and escaped_coq = parse
       { comment_level := 1;
         ignore (comment lexbuf); escaped_coq lexbuf }
   | "*)"
-      { (* likely to be a syntax error: we escape *) backtrack lexbuf }
+      {
+        (* likely to be a syntax error: we escape *)
+        backtrack lexbuf
+      }
   | eof
       {   }
   | (identifier '.')* identifier
       { OutB.ident (lexeme lexbuf) None;
         escaped_coq lexbuf }
+
   | space_nl*
       { let str = lexeme lexbuf in
-          OutB.end_inline_coq ();
-          String.iter OutB.char str;
-          OutB.start_inline_coq ();
-          escaped_coq lexbuf
+        OutB.end_inline_coq ();
+        String.iter OutB.char str;
+        OutB.start_inline_coq ();
+        escaped_coq lexbuf
       }
   | _
       { OutB.sublexer_in_doc (lexeme_char lexbuf 0);
@@ -951,71 +942,6 @@ and string = parse
 and skip_hide = parse
   | eof | end_hide { () }
   | _ { skip_hide lexbuf }
-
-(*s These handle inference rules, parsing the body segments of things
-    enclosed in [[[  ]]] brackets *)
-and inf_rules indents = parse
-  | space* nl     (* blank line, before or between definitions *)
-      { inf_rules indents lexbuf }
-  | "]]]" nl      (* end of the inference rules block *)
-      { match indents with
-        | Some ls -> doc_list_bol ls lexbuf
-        | None -> doc_bol lexbuf }
-  | _
-      { backtrack lexbuf;  (* anything else must be the first line in a rule *)
-        inf_rules_assumptions indents [] lexbuf}
-
-(* The inference rule parsing just collects the inference rule and then
-   calls the output function once, instead of doing things incrementally
-   like the rest of the lexer.  If only there were a real parsing phase...
-*)
-and inf_rules_assumptions indents assumptions = parse
-  | space* "---" '-'* [^ '\n']* nl (* hit the horizontal line *)
-      { let line = lexeme lexbuf in
-        let (spaces,_) = count_spaces line in
-        let dashes_and_name =
-               cut_head_tail_spaces (String.sub line 0 (String.length line - 1))
-        in
-        let ldn = String.length dashes_and_name in
-        let (dashes,name) =
-          try (let i = String.index dashes_and_name ' ' in
-               let d = String.sub dashes_and_name 0 i in
-               let n = cut_head_tail_spaces
-                        (String.sub dashes_and_name (i+1) (ldn-i-1))
-               in
-                 (d, Some n))
-          with _ -> (dashes_and_name, None)
-
-        in
-          inf_rules_conclusion indents (List.rev assumptions)
-                               (spaces, dashes, name) [] lexbuf }
-  | [^ '\n']* nl (* if it's not the horizontal line, it's an assumption *)
-      { let line = lexeme lexbuf in
-        let (spaces,_) = count_spaces line in
-        let assumption = cut_head_tail_spaces
-                            (String.sub line 0 (String.length line - 1))
-        in
-          inf_rules_assumptions indents ((spaces,assumption)::assumptions)
-                                lexbuf }
-
-(*s The conclusion is required to come immediately after the
-    horizontal bar.  It is allowed to contain multiple lines of
-    text, like the assumptions.  The conclusion ends when we spot a
-    blank line or a ']]]'. *)
-and inf_rules_conclusion indents assumptions middle conclusions = parse
-  | space* nl | space* "]]]" nl (* end of conclusions. *)
-      { backtrack lexbuf;
-        OutB.inf_rule assumptions middle (List.rev conclusions);
-        inf_rules indents lexbuf }
-  | space* [^ '\n']+ nl (* this is a line in the conclusion *)
-      { let line = lexeme lexbuf in
-        let (spaces,_) = count_spaces line in
-        let conc = cut_head_tail_spaces (String.sub line 0
-                                                    (String.length line - 1))
-        in
-          inf_rules_conclusion indents assumptions middle
-                               ((spaces,conc) :: conclusions) lexbuf
-      }
 
 (*s Applying the scanners to files *)
 {
