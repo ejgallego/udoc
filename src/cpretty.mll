@@ -299,11 +299,6 @@ let gallina_ext =
   | ("Hypothesis" | "Hypotheses")
   | "End"
 
-let notation_kw =
-    "Notation"
-  | "Infix"
-  | "Reserved" space+ "Notation"
-
 let commands =
   "Pwd"
   | "Cd"
@@ -340,13 +335,20 @@ let extraction =
   | "Recursive" space+ "Extraction"
   | "Extract"
 
-let gallina_kw = thm_token | def_token | decl_token | gallina_ext | commands | extraction
+let notation_kw =
+    "Notation"
+  | "Infix"
+  | "Reserved" space+ "Notation"
+
+let gallina_prim_kw = thm_token | def_token | decl_token | gallina_ext | commands | extraction | notation_kw
 
 let prog_kw =
-  "Program" space+ gallina_kw
+  "Program" space+ gallina_prim_kw
   | "Obligation"
   | "Obligations"
   | "Solve"
+
+let gallina_kw = gallina_prim_kw | prog_kw
 
 let section = "*" | "**" | "***" | "****"
 
@@ -386,45 +388,42 @@ rule coq_bol = parse
   | space* begin_hide
       { skip_hide lexbuf; coq_bol lexbuf }
 
+  (* Theorem: sets `in_proof` mode *)
   | space* thm_token
       { let s = lexeme lexbuf in
         output_indented_keyword s lexbuf;
         let eol = body lexbuf in
         in_proof := Some eol;
         if eol then coq_bol lexbuf else coq lexbuf }
+
+  (* `Proof` token, sets `in_proof` *)
   | space* prf_token
       { in_proof := Some true;
-        let eol =
-            begin backtrack lexbuf; body_bol lexbuf end
-        in if eol then coq_bol lexbuf else coq lexbuf }
+        let eol = backtrack lexbuf; body_bol lexbuf in
+        if eol then coq_bol lexbuf else coq lexbuf
+      }
+
+  (* `Qed` token, unsets `in_proof` *)
   | space* end_kw {
       let eol =
-        if not (!in_proof <> None) then
+        if !in_proof = None then
           begin backtrack lexbuf; body_bol lexbuf end
         else skip_to_dot lexbuf
       in
         in_proof := None;
         if eol then coq_bol lexbuf else coq lexbuf }
+
+  (* `Definition`, notation, etc... *)
   | space* gallina_kw
       {
         in_proof := None;
-        let s = lexeme lexbuf in
+        let s   = lexeme lexbuf in
         output_indented_keyword s lexbuf;
-        let eol= body lexbuf in
-        if eol then coq_bol lexbuf else coq lexbuf }
-  | space* prog_kw
-      {
-        in_proof := None;
-        let s = lexeme lexbuf in
-        output_indented_keyword s lexbuf;
-        let eol= body lexbuf in
-        if eol then coq_bol lexbuf else coq lexbuf }
-  | space* notation_kw
-      { let s = lexeme lexbuf in
-        output_indented_keyword s lexbuf;
-        let eol= start_notation_string lexbuf in
-        if eol then coq_bol lexbuf else coq lexbuf }
+        let eol = body lexbuf   in
+        if eol then coq_bol lexbuf else coq lexbuf
+      }
 
+  (*  *)
   | space* "(**" space+ "printing" space+ printing_token space+
       { let _tok = lexeme lexbuf in
         let _s = printing_token_body lexbuf in
@@ -511,19 +510,11 @@ and coq = parse
       if eol then coq_bol lexbuf else coq lexbuf }
   | gallina_kw
       { let s = lexeme lexbuf in
-          OutB.ident s None;
-        let eol = body lexbuf in
-          if eol then coq_bol lexbuf else coq lexbuf }
-  | notation_kw
-      { let s = lexeme lexbuf in
         OutB.ident s None;
-        let eol= start_notation_string lexbuf in
-        if eol then coq_bol lexbuf else coq lexbuf }
-  | prog_kw
-      { let s = lexeme lexbuf in
-          OutB.ident s None;
         let eol = body lexbuf in
-          if eol then coq_bol lexbuf else coq lexbuf }
+        if eol then coq_bol lexbuf else coq lexbuf
+      }
+
   | space+ { OutB.char ' '; coq lexbuf }
   | eof
       { () }
@@ -953,7 +944,7 @@ and body = parse
          }
   | "where"
       { OutB.ident (lexeme lexbuf) None;
-        start_notation_string lexbuf }
+        body lexbuf }
   | identifier
       { OutB.ident (lexeme lexbuf) (Some (lexeme_start lexbuf));
         body lexbuf }
@@ -971,26 +962,6 @@ and body = parse
   | _ { let c = lexeme_char lexbuf 0 in
         OutB.sublexer c (lexeme_start lexbuf);
         body lexbuf }
-
-and start_notation_string = parse
-  | space { OutB.char (lexeme_char lexbuf 0);
-            start_notation_string lexbuf }
-  | '"' (* a true notation *)
-      { OutB.sublexer '"' (lexeme_start lexbuf);
-        notation_string lexbuf;
-        body lexbuf }
-  | _ (* an abbreviation *)
-      { backtrack lexbuf; body lexbuf }
-
-and notation_string = parse
-  | "\"\""
-      { OutB.char '"'; OutB.char '"'; (* Unlikely! *)
-        notation_string lexbuf }
-  | '"'
-      { OutB.char '"' }
-  | _ { let c = lexeme_char lexbuf 0 in
-        OutB.sublexer c (lexeme_start lexbuf);
-        notation_string lexbuf }
 
 and string = parse
   | "\"\"" { OutB.char '"'; OutB.char '"'; string lexbuf }
