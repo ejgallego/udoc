@@ -43,8 +43,6 @@ let usage () =
   prerr_endline "  --multi-index        index split in multiple files";
   prerr_endline "  --index <string>     set index name (default is index)";
   prerr_endline "  --toc                output a table of contents";
-  prerr_endline "  --vernac <file>      consider <file> as a .v file";
-  prerr_endline "  -p <string>          insert <string> in LaTeX preamble";
   prerr_endline "  --no-glob            don't use any globalization information (no links will be inserted at identifiers)";
   prerr_endline "  --quiet              quiet mode (default)";
   prerr_endline "  --verbose            verbose mode";
@@ -56,11 +54,7 @@ let usage () =
   prerr_endline "  --coqlib_path <dir>  set the path where Coq files are installed";
   prerr_endline "  -R <dir> <coqdir>    map physical dir to Coq dir";
   prerr_endline "  -Q <dir> <coqdir>    map physical dir to Coq dir";
-  prerr_endline "  --parse-comments     parse regular comments";
-  prerr_endline "  --plain-comments     consider comments as non-literate text";
   prerr_endline "  --toc-depth <int>    don't include TOC entries for sections below level <int>";
-  prerr_endline "  --no-lib-name        don't display \"Library\" before library names in the toc";
-  prerr_endline "  --lib-name <string>  call top level toc entries <string> instead of \"Library\"";
   prerr_endline "";
   exit 1
 
@@ -139,8 +133,6 @@ let dvi = ref false
 let ps  = ref false
 let pdf = ref false
 
-let preamble = ref []
-
 let parse () =
   let files = ref [] in
   let add_file f = files := f :: !files in
@@ -165,8 +157,6 @@ let parse () =
                 }; parse_rec rem
     | ("-with-footer" | "--with-footer") :: [] ->
 	usage ()
-    | ("-p" | "--preamble") :: s :: rem ->
-        preamble := s :: !preamble; parse_rec rem
     | ("-p" | "--preamble") :: [] ->
 	usage ()
     | ("-noindex" | "--noindex" | "--no-index") :: rem ->
@@ -344,9 +334,6 @@ let produce_document (l : file list) =
     | GlobFile f -> read_glob_file None f
   end;
   List.iter index_module l;
-
-  (* XXX: Preload the preamble. *)
-  List.iter (OutB.push_in_preamble) (List.rev !preamble);
 
   match !out_to with
     | StdOut ->
