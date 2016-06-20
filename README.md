@@ -2,6 +2,11 @@
 
 This is a fork of CoqDoc geared to the production of jsCoq documents from `.v` files.
 
+It assumes a `jscoq` folder with a jscoq build. Such builds can be
+downloaded from here:
+
+https://github.com/ejgallego/jscoq-builds
+
 ## Ideas
 
 - The Coq `Comments` command could be used?

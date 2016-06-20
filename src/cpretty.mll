@@ -24,6 +24,19 @@
   module Make (Out : Output.S) = struct
   module OutB = Out
 
+  (* Flag reference: *)
+
+  (* formatted = whether we are inside a [[ coq_code ]] block *)
+  let formatted     = ref false
+  (* in_proof = whether we are in a Proof. tac* Qed. block *)
+  let in_proof      = ref None
+
+  (* brackets = number of brackets in a [ coq_code ] declaration, used for parsing *)
+  let brackets      = ref 0
+  (* similar *)
+  let comment_level = ref 0
+
+
   (* A list function we need *)
   let rec take n ls =
     if n = 0 then [] else
@@ -75,11 +88,6 @@
     let eol = s.[String.length s - 1] = '\n' in
     (eol, if eol then String.sub s 1 (String.length s - 1) else s)
 
-
-  let formatted = ref false
-  let brackets = ref 0
-  let comment_level = ref 0
-  let in_proof = ref None
 
   let in_env start stop =
     let r = ref false in
@@ -345,6 +353,18 @@ let item_space = "    "
 let begin_hide = "(*" space* "begin" space+ "hide" space* "*)" space* nl
 let end_hide = "(*" space* "end" space+ "hide" space* "*)" space* nl
 
+(* Main rules:
+
+- coq_bol
+- coq
+- doc
+- body_bol
+
+- body: Does little more than highlighting identifiers, and some other
+  special constructs.
+
+*)
+
 (*s Scanning Coq, at beginning of line *)
 
 rule coq_bol = parse
@@ -411,7 +431,7 @@ rule coq_bol = parse
         if eol then coq_bol lexbuf else coq lexbuf
       }
 
-  (* ?? *)
+  (* Non-doc Comment *)
   | space* "(*"
       { comment_level := 1;
         begin
@@ -433,8 +453,13 @@ rule coq_bol = parse
 
 (*s Scanning Coq elsewhere *)
 and coq = parse
+
   | nl
-      { if not (!in_proof <> None) then OutB.line_break(); coq_bol lexbuf }
+      { if !in_proof = None then
+          OutB.line_break();
+        coq_bol lexbuf
+      }
+
   | "(**" space_nl
       { OutB.end_coq (); OutB.start_doc ();
         let eol = doc_bol lexbuf in
@@ -452,6 +477,7 @@ and coq = parse
           if eol then coq_bol lexbuf
           else coq lexbuf
       }
+
   | nl+ space* "]]"
       { if not !formatted then
         begin
@@ -467,15 +493,18 @@ and coq = parse
         end }
   | eof
       { () }
+
   | prf_token
       { let eol =
             begin backtrack lexbuf; body lexbuf end
         in if eol then coq_bol lexbuf else coq lexbuf }
+
   | end_kw {
       let eol = begin backtrack lexbuf; body lexbuf end
       in
       in_proof := None;
       if eol then coq_bol lexbuf else coq lexbuf }
+
   | gallina_kw
       { let s = lexeme lexbuf in
         OutB.ident s None;
@@ -484,6 +513,7 @@ and coq = parse
       }
 
   | space+ { OutB.char ' '; coq lexbuf }
+
   | eof
       { () }
   | _ { let eol =
@@ -494,11 +524,13 @@ and coq = parse
 (*s Scanning documentation, at beginning of line *)
 
 and doc_bol = parse
+
   | space* section space+ ([^'\n' '*'] | '*'+ [^'\n' ')' '*'])* ('*'+ '\n')?
       { let eol, lex = strip_eol (lexeme lexbuf) in
         let lev, s   = sec_title lex             in
         OutB.section lev (fun () -> ignore (doc None (from_string s)));
         if eol then doc_bol lexbuf else doc None lexbuf }
+
   | space_nl* '-'+
       { let buf' = lexeme lexbuf in
         let bufs = Str.split_delim (Str.regexp "['\n']") buf' in
@@ -619,6 +651,7 @@ and doc_list_bol indents = parse
 
 (*s Scanning documentation elsewhere *)
 and doc indents = parse
+
   | nl
       { OutB.char '\n';
         match indents with
@@ -788,24 +821,29 @@ and escaped_coq = parse
 (*s Skip comments *)
 
 and comment = parse
+
   | "(*" { incr comment_level;
            OutB.start_comment ();
            comment lexbuf }
+
   | "*)" space* nl {
       OutB.end_comment (); OutB.line_break ();
       decr comment_level;
       if !comment_level > 0 then comment lexbuf else true
     }
+
   | "*)" {
       OutB.end_comment ();
       decr comment_level;
       if !comment_level > 0 then comment lexbuf else false }
+
   | "[" {
       brackets := 1;
       OutB.start_inline_coq ();
       escaped_coq lexbuf;
       OutB.end_inline_coq ();
       comment lexbuf }
+
   | "[[" nl {
       formatted := true;
       OutB.start_inline_coq_block ();
@@ -852,14 +890,18 @@ and body_bol = parse
   | _ { backtrack lexbuf; OutB.indentation 0; body lexbuf }
 
 and body = parse
+
+  (* New line *)
   | nl { OutB.line_break(); Lexing.new_line lexbuf; body_bol lexbuf}
+
+  (* In case we were inside a verbatim block *)
   | nl+ space* "]]" space* nl
       { if not !formatted then
           begin
-            let s = lexeme lexbuf in
+            let s      = lexeme lexbuf in
             let nlsp,s = remove_newline s in
-            let _,isp = count_spaces s in
-            let loc = lexeme_start lexbuf + nlsp + isp in
+            let _,isp  = count_spaces s in
+            let loc    = lexeme_start lexbuf + nlsp + isp in
             OutB.sublexer ']' loc;
             OutB.sublexer ']' (loc+1);
             body lexbuf
@@ -869,6 +911,8 @@ and body = parse
             OutB.paragraph ();
             true
           end }
+
+  (* In case we were inside a verbatim block *)
   | "]]" space* nl
       { if not !formatted then
           begin
@@ -883,10 +927,10 @@ and body = parse
             OutB.paragraph ();
             true
           end }
+
   | eof { false }
-  | '.' space* nl | '.' space* eof
-        { OutB.char '.'; OutB.line_break();
-          if not !formatted then true else body_bol lexbuf }
+
+
   | '.' space* nl "]]" space* nl
         { OutB.char '.';
         if not !formatted then
@@ -901,35 +945,51 @@ and body = parse
             true
           end
       }
+
+  (* End of command! *)
+  | '.' space* nl | '.' space* eof
+        { OutB.char '.'; OutB.line_break();
+          if not !formatted then true else body_bol lexbuf }
+
   | '.' space+
         { OutB.char '.'; OutB.char ' ';
           if not !formatted then false else body lexbuf }
+
+  (* Start of comment *)
   | "(**" space_nl
       { OutB.end_coq (); OutB.start_doc ();
         let eol = doc_bol lexbuf in
-          OutB.end_doc (); OutB.start_coq ();
-          if eol then body_bol lexbuf else body lexbuf }
+        OutB.end_doc (); OutB.start_coq ();
+        if eol then body_bol lexbuf else body lexbuf }
+
   | "(*" { comment_level := 1;
            OutB.start_comment ();
            body lexbuf
          }
+
   | "where"
       { OutB.ident (lexeme lexbuf) None;
         body lexbuf }
+
+  (* identifier *)
   | identifier
       { OutB.ident (lexeme lexbuf) (Some (lexeme_start lexbuf));
         body lexbuf }
+
   | ".."
       { OutB.char '.'; OutB.char '.';
         body lexbuf }
+
   | '"'
       { OutB.char '"';
         string lexbuf;
         body lexbuf }
+
   | space
       { OutB.char (lexeme_char lexbuf 0);
         body lexbuf }
 
+  (* So this really does little... *)
   | _ { let c = lexeme_char lexbuf 0 in
         OutB.sublexer c (lexeme_start lexbuf);
         body lexbuf }
