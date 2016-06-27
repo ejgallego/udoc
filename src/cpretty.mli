@@ -6,12 +6,4 @@
 (*         *       GNU Lesser General Public License Version 2.1        *)
 (************************************************************************)
 
-module type S = sig
-
-module OutB : Output.S
-
-val coq_file        : string -> Cdglobals.coq_module -> unit
-
-end
-
-module Make (Out : Output.S) : S with module OutB = Out
+val coq_file        : string -> unit

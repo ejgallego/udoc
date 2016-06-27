@@ -133,12 +133,11 @@ let copy src dst =
 (*s Functions for generating output files *)
 
 module OutB    = Out_jscoq.JsCoq
-module Cpretty = Cpretty.Make(OutB)
 
 (** gen_one_file [l] *)
 let gen_one_file out (l : string list) =
   let out_module f =
-    Cpretty.coq_file f "uu"
+    Cpretty.coq_file f
   in
   OutB.start_file out
     ~toc:!opts.toc
