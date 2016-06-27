@@ -120,14 +120,13 @@ module JsCoq : S = struct
        | Some n -> n
        | None -> addr)
 
-  let sublexer c loc    =
-    output_char c
+  let sublexer c = output_char c
     (* output_sublexer_string true true None (String.make 1 c) *)
   let sublexer_in_doc c =
     output_char c
 
-  let keyword s _loc = output_string s
-  let ident   s _loc = output_string s
+  let keyword s = output_string s
+  let ident   s = output_string s
   let proofbox ()    = ()
 
   let item_level = ref 0

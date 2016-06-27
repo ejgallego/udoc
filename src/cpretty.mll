@@ -191,7 +191,7 @@
     let nbsp,isp = count_spaces s in
     OutB.indentation nbsp;
     let s = String.sub s isp (String.length s - isp) in
-    OutB.keyword s (lexeme_start lexbuf + isp)
+    OutB.keyword s
 
 }
 
@@ -487,8 +487,8 @@ and coq = parse
           let nbsp,isp = count_spaces s in
           OutB.indentation nbsp;
           let loc = lexeme_start lexbuf + isp + nlsp in
-          OutB.sublexer ']' loc;
-          OutB.sublexer ']' (loc+1);
+          OutB.sublexer ']';
+          OutB.sublexer ']';
           coq lexbuf
         end }
   | eof
@@ -507,7 +507,7 @@ and coq = parse
 
   | gallina_kw
       { let s = lexeme lexbuf in
-        OutB.ident s None;
+        OutB.ident s;
         let eol = body lexbuf in
         if eol then coq_bol lexbuf else coq lexbuf
       }
@@ -804,7 +804,7 @@ and escaped_coq = parse
   | eof
       {   }
   | (identifier '.')* identifier
-      { OutB.ident (lexeme lexbuf) None;
+      { OutB.ident (lexeme lexbuf);
         escaped_coq lexbuf }
 
   | space_nl*
@@ -902,8 +902,8 @@ and body = parse
             let nlsp,s = remove_newline s in
             let _,isp  = count_spaces s in
             let loc    = lexeme_start lexbuf + nlsp + isp in
-            OutB.sublexer ']' loc;
-            OutB.sublexer ']' (loc+1);
+            OutB.sublexer ']';
+            OutB.sublexer ']';
             body lexbuf
           end
         else
@@ -917,8 +917,8 @@ and body = parse
       { if not !formatted then
           begin
             let loc = lexeme_start lexbuf in
-            OutB.sublexer ']' loc;
-            OutB.sublexer ']' (loc+1);
+            OutB.sublexer ']';
+            OutB.sublexer ']';
             OutB.line_break();
             body lexbuf
           end
@@ -968,12 +968,12 @@ and body = parse
          }
 
   | "where"
-      { OutB.ident (lexeme lexbuf) None;
+      { OutB.ident (lexeme lexbuf);
         body lexbuf }
 
   (* identifier *)
   | identifier
-      { OutB.ident (lexeme lexbuf) (Some (lexeme_start lexbuf));
+      { OutB.ident (lexeme lexbuf);
         body lexbuf }
 
   | ".."
@@ -991,7 +991,7 @@ and body = parse
 
   (* So this really does little... *)
   | _ { let c = lexeme_char lexbuf 0 in
-        OutB.sublexer c (lexeme_start lexbuf);
+        OutB.sublexer c;
         body lexbuf }
 
 and string = parse
@@ -1009,7 +1009,6 @@ and skip_hide = parse
     reset ();
     let c  = open_in f      in
     let lb = from_channel c in
-    Index.current_library := m;
     OutB.start_module m;
     OutB.start_coq ();
     coq_bol lb;

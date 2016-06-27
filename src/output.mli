@@ -6,8 +6,6 @@
 (*         *       GNU Lesser General Public License Version 2.1        *)
 (************************************************************************)
 
-open Index
-
 (* Backend printer *)
 module type S = sig
 
@@ -70,10 +68,10 @@ val rule : unit -> unit
 val nbsp : unit -> unit
 
 val char    : char -> unit
-val keyword : string -> loc -> unit
-val ident   : string -> loc option -> unit
+val keyword : string -> unit
+val ident   : string -> unit
 
-val sublexer : char -> loc -> unit
+val sublexer : char -> unit
 val sublexer_in_doc : char -> unit
 
 val proofbox : unit -> unit
