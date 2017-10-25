@@ -414,7 +414,7 @@ rule coq_bol = parse
   (* `Qed` token, unsets `in_proof` *)
   | space* end_kw {
       let eol =
-        if !in_proof = None then
+        if !in_proof != None then
           begin backtrack lexbuf; body_bol lexbuf end
         else skip_to_dot lexbuf
       in
