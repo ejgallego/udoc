@@ -248,7 +248,7 @@ rule coq = parse
         OutB.end_coq ();
         OutB.start_doc ();
         pr ("Call doc_bol " ^ string_of_int !comment_level ^ " ");
-        doc_bol lexbuf;
+        let _bol = doc_bol lexbuf in
         pr "Out doc_bol";
         OutB.end_doc ();
         OutB.start_coq ();
@@ -268,7 +268,7 @@ rule coq = parse
             OutB.indentation nbsp;
             OutB.start_comment ();
         end;
-        comment lexbuf;
+        let _c = comment lexbuf in
         coq lexbuf
       }
 
@@ -439,7 +439,7 @@ and doc indents = parse
       {
         pr ("docComment: " ^ string_of_int !comment_level);
         backtrack lexbuf ;
-        comment lexbuf ;
+        let _c = comment lexbuf in
         pr "out of docComment";
         doc indents lexbuf
       }
@@ -553,7 +553,7 @@ and escaped_coq = parse
         OutB.sublexer_in_doc '['; escaped_coq lexbuf }
   | "(*"
       { comment_level := 1;
-        ignore (comment lexbuf); escaped_coq lexbuf }
+        let _c = comment lexbuf in escaped_coq lexbuf }
   | "*)"
       {
         (* likely to be a syntax error: we escape *)
@@ -677,14 +677,14 @@ and body = parse
   (* Start of comment *)
   | "(**" space_nl
       { OutB.end_coq (); OutB.start_doc ();
-        doc_bol lexbuf;
+        let _bol = doc_bol lexbuf in
         OutB.end_doc (); OutB.start_coq ();
         body lexbuf
       }
 
   | "(*" { comment_level := 1;
            OutB.start_comment ();
-           comment lexbuf;
+           let _c = comment lexbuf in
            body lexbuf
          }
 
@@ -731,7 +731,7 @@ and skip_hide = parse
     let c  = open_in f      in
     let lb = from_channel c in
     OutB.start_coq ();
-    coq lb;
+    let () = coq lb in
     OutB.end_coq ();
     close_in c
 
