@@ -10,6 +10,7 @@
 
 open Cdglobals
 open Printf
+open Stdlib
 
 let usage () =
   prerr_endline "";
@@ -122,7 +123,7 @@ let copy src dst =
   try
     let cout = open_out dst in
     try
-      while true do Pervasives.output_char cout (input_char cin) done
+      while true do output_char cout (input_char cin) done
     with End_of_file ->
       close_out cout;
       close_in cin
