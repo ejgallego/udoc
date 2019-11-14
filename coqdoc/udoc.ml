@@ -10,7 +10,6 @@
 
 open Cdglobals
 open Printf
-open Stdlib
 
 let usage () =
   prerr_endline "";
